@@ -11,7 +11,7 @@ import Layout from './pages/hotelOwner/Layout';
 import Dashboard from './pages/hotelOwner/Dashboard';
 import AddRoom from './pages/hotelOwner/AddRoom';
 import ListRoom from './pages/hotelOwner/ListRoom';
-
+import RouteOne from './pages/RouteOne';
 const App = () => {
 
   const isOwnerPath = useLocation().pathname.includes("owner");
@@ -24,6 +24,7 @@ const App = () => {
       <Routes>
         <Route path='/' element={<Home/>} />
         <Route path='/rooms' element={<AllRooms/>} />
+        <Route path='/route1' element={<RouteOne/>} />
         <Route path='/rooms/:id' element={<RoomDetails/>} />
         <Route path='/my-bookings' element={<MyBookings/>} />
         <Route path='/owner' element={<Layout/>}>

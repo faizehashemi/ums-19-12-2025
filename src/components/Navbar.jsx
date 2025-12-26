@@ -12,8 +12,9 @@ const BookIcon = ()=>(
 const Navbar = () => {
     const navLinks = [
         { name: 'Home', path: '/' },
-        { name: 'Hotels', path: '/rooms' },
+        { name: 'My Bookings', path: '/my-bookings' },
         { name: 'Information', path: '/information' },
+        { name: 'Tour Operator', path: '/tourOperator' },
         { name: 'About Us', path: '/aboutUs' },
     ];
 
@@ -60,7 +61,7 @@ const Navbar = () => {
                         </a>
                     ))}
                     <button className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${isScrolled ? 'text-black' : 'text-white'} transition-all`} onClick={()=> navigate('/owner')}>
-                    Dashboard
+                    Admin
                     </button>
                 </div>
 

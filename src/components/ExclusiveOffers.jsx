@@ -13,14 +13,14 @@ const ExclusiveOffers = () => {
       </div>
 
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12'>
-        {exclusiveOffers.map((item)=>(
+        {exclusiveOffers.map((item, index)=>(
 <div key={item._id} className='group relative flex flex-col items-start justify-start gap-1 pt-6 px-4 rounded-xl text-white-400 bg-black/40 border border-white-500/100 shadow-2xl overflow-hidden'><div>
                     <p className='text-2xl font-medium font-playfair'>{item.title}</p>
                     <p>{item.description}</p>
-                    
+
                 </div>
-                <button 
-                  onClick={() => navigate('/route1')} 
+                <button
+                  onClick={() => navigate(`/route${index + 1}`)}
                   className='flex items-center gap-2 font-medium cursor-pointer mt-4 mb-5'
                 >
                   Book Now

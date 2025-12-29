@@ -5,9 +5,11 @@ import StepMembers from "./steps/StepMembers";
 import StepDocuments from "./steps/StepDocuments";
 import StepAccommodation from "./steps/StepAccommodation";
 import StepFees from "./steps/StepFees";
+import StepReview from "./steps/StepReview";
+import { supabase } from "../../lib/supabase";
 
 export default function ReservationForm() {
-  const steps = ["Travel", "Members", "Documents", "Accommodation", "Fees"];
+  const steps = ["Travel", "Members", "Documents", "Accommodation", "Fees", "Review"];
   const totalPages = steps.length;
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -167,6 +169,11 @@ export default function ReservationForm() {
     window.scrollTo(0, 0);
   };
 
+  const goToStep = (step) => {
+    setCurrentPage(step);
+    window.scrollTo(0, 0);
+  };
+
   // ---- Fees + submit ----
   const calculateFees = () => {
     const baseFee = 500;
@@ -201,7 +208,39 @@ export default function ReservationForm() {
       };
 
       console.log("Form Submission Payload:", payload);
-      alert("Form submitted successfully! Check the console for the payload.");
+
+      // Submit to Supabase
+      const { data, error } = await supabase
+        .from('reservations')
+        .insert([
+          {
+            travel_details: travelDetails,
+            members: members.map((m) => ({
+              ...memberData[m.id],
+              documents: documents[m.id] || {},
+            })),
+            accommodation: accommodation,
+            base_fee: fees.baseFee,
+            accommodation_fee: fees.accommodationFee,
+            per_person_fee: fees.perPersonFee,
+            num_members: fees.numMembers,
+            total_fee: fees.total,
+            status: 'pending'
+          }
+        ])
+        .select();
+
+      if (error) {
+        console.error("Supabase error:", error);
+        alert(`Error submitting form: ${error.message}`);
+        return;
+      }
+
+      console.log("Supabase response:", data);
+      alert("Form submitted successfully to Supabase!");
+    } catch (err) {
+      console.error("Submission error:", err);
+      alert(`Error: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -213,7 +252,7 @@ export default function ReservationForm() {
       currentStep={currentPage}
       onPrev={prevPage}
       onNext={nextPage}
-      onFinish={submitForm}
+      onFinish={currentPage === totalPages ? null : nextPage}
       isFinal={currentPage === totalPages}
       submitting={submitting}
     >
@@ -255,6 +294,20 @@ export default function ReservationForm() {
 
       {currentPage === 5 && (
         <StepFees fees={calculateFees()} accommodation={accommodation} />
+      )}
+
+      {currentPage === 6 && (
+        <StepReview
+          travelDetails={travelDetails}
+          members={members}
+          memberData={memberData}
+          documents={documents}
+          accommodation={accommodation}
+          fees={calculateFees()}
+          onEdit={goToStep}
+          onSubmit={submitForm}
+          submitting={submitting}
+        />
       )}
     </FlyonStepperShell>
   );

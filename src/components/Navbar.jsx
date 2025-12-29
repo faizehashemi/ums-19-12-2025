@@ -13,14 +13,21 @@ const Navbar = () => {
     const navLinks = [
         { name: 'Home', path: '/' },
         { name: 'My Bookings', path: '/my-bookings' },
-        { name: 'Information', path: '/information' },
         { name: 'Tour Operator', path: '/tourOperator' },
         { name: 'About Us', path: '/aboutUs' },
     ];
 
+    const informationDropdown = [
+        { name: 'Overview', path: '/information?tab=overview' },
+        { name: 'Guidelines', path: '/information?tab=guidelines' },
+        { name: 'Registration', path: '/information?tab=registration' },
+        { name: 'Lawazim & Fees', path: '/information?tab=lawazim' },
+        { name: 'Transport', path: '/information?tab=transport' },
+    ];
 
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isInfoDropdownOpen, setIsInfoDropdownOpen] = useState(false);
 
     const {openSignIn} = useClerk()
     const {user} = useUser()
@@ -60,7 +67,35 @@ const Navbar = () => {
                             <div className={`${isScrolled ? "bg-gray-700" : "bg-white"} h-0.5 w-0 group-hover:w-full transition-all duration-300`} />
                         </a>
                     ))}
-                    <button className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${isScrolled ? 'text-black' : 'text-white'} transition-all`} onClick={()=> navigate('/owner')}>
+
+                    {/* Information Dropdown */}
+                    <div
+                        className="relative group"
+                        onMouseEnter={() => setIsInfoDropdownOpen(true)}
+                        onMouseLeave={() => setIsInfoDropdownOpen(false)}
+                    >
+                        <button className={`flex items-center gap-1 ${isScrolled ? "text-gray-700" : "text-white"}`}>
+                            Information
+                            <svg className={`w-4 h-4 transition-transform ${isInfoDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        <div className={`absolute top-full left-0 mt-2 w-48 bg-white shadow-lg rounded-lg overflow-hidden transition-all duration-300 ${isInfoDropdownOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
+                            {informationDropdown.map((item, i) => (
+                                <a
+                                    key={i}
+                                    href={item.path}
+                                    className="block px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors text-sm border-b border-gray-100 last:border-b-0"
+                                >
+                                    {item.name}
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+
+                    <button className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${isScrolled ? 'text-black' : 'text-white'} transition-all`} onClick={()=> navigate('/owner/dashboard')}>
                     Admin
                     </button>
                 </div>
@@ -98,7 +133,7 @@ const Navbar = () => {
                 </div>
 
                 {/* Mobile Menu */}
-                <div className={`fixed top-0 left-0 w-full h-screen bg-white text-base flex flex-col md:hidden items-center justify-center gap-6 font-medium text-gray-800 transition-all duration-500 ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
+                <div className={`fixed top-0 left-0 w-full h-screen bg-white text-base flex flex-col md:hidden items-center justify-center gap-6 font-medium text-gray-800 transition-all duration-500 overflow-y-auto ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
                     <button className="absolute top-4 right-4" onClick={() => setIsMenuOpen(false)}>
                         <img src={assets.closeIcon} alt="close-menu" className="h-6.5" />
                     </button>
@@ -108,6 +143,34 @@ const Navbar = () => {
                             {link.name}
                         </a>
                     ))}
+
+                    {/* Mobile Information Dropdown */}
+                    <div className="flex flex-col items-center gap-3">
+                        <button
+                            onClick={() => setIsInfoDropdownOpen(!isInfoDropdownOpen)}
+                            className="flex items-center gap-1 text-gray-800 font-medium"
+                        >
+                            Information
+                            <svg className={`w-4 h-4 transition-transform ${isInfoDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        {isInfoDropdownOpen && (
+                            <div className="flex flex-col gap-2 items-center">
+                                {informationDropdown.map((item, i) => (
+                                    <a
+                                        key={i}
+                                        href={item.path}
+                                        onClick={() => setIsMenuOpen(false)}
+                                        className="text-sm text-gray-600 hover:text-gray-800"
+                                    >
+                                        {item.name}
+                                    </a>
+                                ))}
+                            </div>
+                        )}
+                    </div>
 
                   {user &&  <button className="border px-4 py-1 text-sm font-light rounded-full cursor-pointer transition-all" onClick={()=> navigate('/owner')}>
                         Dashboard

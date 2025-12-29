@@ -37,9 +37,23 @@ import listIcon from "./listIcon.svg";
 import uploadArea from "./uploadArea.svg";
 import totalBookingIcon from "./totalBookingIcon.svg";
 import totalRevenueIcon from "./totalRevenueIcon.svg";
-
+import reservationIcon from "./reservations.svg";
+import accountsIcon from "./accounts.svg";
+import utensilsIcon from "./mawaid.svg";
+import busIcon from "./transport.svg";
+import bedIcon from "./accommodation.svg";
+import hrIcon from "./hr.svg";
+import reportsIcon from "./reports.svg";
+import settingsIcon from "./settings.svg"
 
 export const assets = {
+    settingsIcon,
+    reportsIcon,
+    hrIcon,
+    bedIcon,
+    busIcon,
+    utensilsIcon,
+    accountsIcon,
     logo,
     searchIcon,
     userIcon,
@@ -72,6 +86,7 @@ export const assets = {
     uploadArea,
     totalBookingIcon,
     totalRevenueIcon,
+    reservationIcon,
 }
 
 export const cities = [

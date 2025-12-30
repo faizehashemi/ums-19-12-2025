@@ -1,9 +1,9 @@
 import React from 'react'
-import ReservationForm from '../components/reservation/ReservationForm'
+import RouteFiveForm from '../components/RouteFive/RouteFiveForm'
 
 const RouteFive = () => {
   return (
-    <ReservationForm />
+    <RouteFiveForm />
   )
 }
 

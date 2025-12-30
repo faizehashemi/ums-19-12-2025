@@ -256,9 +256,9 @@ const Sidebar = () => {
     if (!targetPath) {
       // No path available - shouldn't happen but handle gracefully
       return (
-        <div className="flex items-center gap-3 py-3 px-4 md:px-6 border-l-4 border-transparent text-gray-400">
-          {node.icon && <img src={node.icon} alt="" className="h-5 w-5 opacity-50" />}
-          <span className="text-sm font-medium">{node.title}</span>
+        <div className="flex items-center gap-3 py-3 px-4 md:px-6 border-l-4 border-transparent text-[#b69624] opacity-50">
+          {node.icon && <img src={node.icon} alt="" className="h-6 w-6 opacity-50" style={{ filter: 'brightness(0) saturate(100%) invert(54%) sepia(60%) saturate(418%) hue-rotate(9deg) brightness(92%) contrast(86%)' }} />}
+          <span className="text-base font-medium">{node.title}</span>
         </div>
       );
     }
@@ -267,11 +267,11 @@ const Sidebar = () => {
       <NavLink
         to={targetPath}
         className={`flex items-center gap-3 py-3 px-4 md:px-6 border-l-4 transition-colors cursor-pointer ${
-          isActive ? "bg-blue-600/10 border-blue-600 text-blue-600" : "border-transparent text-gray-700 hover:bg-gray-100/90"
+          isActive ? "bg-[#b69624]/10 border-[#b69624] text-[#b69624]" : "border-transparent text-[#b69624] hover:bg-gray-100/90"
         }`}
       >
-        {node.icon && <img src={node.icon} alt="" className="h-5 w-5" />}
-        <span className="text-sm font-medium">{node.title}</span>
+        {node.icon && <img src={node.icon} alt="" className="h-6 w-6" style={{ filter: 'brightness(0) saturate(100%) invert(54%) sepia(60%) saturate(418%) hue-rotate(9deg) brightness(92%) contrast(86%)' }} />}
+        <span className="text-base font-medium">{node.title}</span>
       </NavLink>
     );
   };
@@ -288,18 +288,18 @@ const Sidebar = () => {
             navigate(node.path);
             closeDrawer();
           }}
-          className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#b69624]"
           style={{ marginLeft: depth * 12 }}
         >
-          <div className="text-sm font-medium text-gray-900">{node.title}</div>
-          <div className="text-xs text-gray-500">{node.path}</div>
+          <div className="text-base font-medium text-[#b69624]">{node.title}</div>
+          <div className="text-sm text-[#b69624] opacity-70">{node.path}</div>
         </button>
       );
     }
 
     return (
       <div className="mt-2" style={{ marginLeft: depth * 12 }}>
-        <div className="px-4 py-2 text-xs font-semibold tracking-wide text-gray-500 uppercase">{node.title}</div>
+        <div className="px-4 py-2 text-sm font-semibold tracking-wide text-[#b69624] uppercase">{node.title}</div>
         <div className="space-y-1">
           {node.children.map((c) => (
             <DrawerNode key={c.key} node={c} depth={depth + 1} />
@@ -312,7 +312,7 @@ const Sidebar = () => {
   return (
     <>
       {/* DESKTOP SIDEBAR */}
-      <aside className="hidden md:flex md:w-72 border-r h-full text-base border-gray-300 pt-4 flex-col">
+      <aside className="hidden md:flex md:w-72 border-r h-full text-base border-gray-300 pt-20 flex-col bg-white/60 backdrop-blur-sm">
         {filteredNav.map((item) => (
           <FirstLevelItem key={item.key} node={item} />
         ))}
@@ -320,7 +320,7 @@ const Sidebar = () => {
 
       {/* MOBILE BOTTOM NAV */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-sm border-t border-gray-200"
         aria-label="Primary"
       >
         <div className="grid grid-cols-5">
@@ -334,13 +334,13 @@ const Sidebar = () => {
                   if (t.path) navigate(t.path);
                   else openDrawer(t.openKey);
                 }}
-                className={`flex flex-col items-center justify-center gap-1 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  active ? "text-blue-600" : "text-gray-600"
+                className={`flex flex-col items-center justify-center gap-1 py-2 focus:outline-none focus:ring-2 focus:ring-[#b69624] ${
+                  active ? "text-[#b69624]" : "text-[#b69624] opacity-60"
                 }`}
                 aria-current={active ? "page" : undefined}
               >
-                {t.icon ? <img src={t.icon} alt="" className="h-6 w-6" /> : <span className="h-6 w-6" aria-hidden="true" />}
-                <span className="text-[11px] leading-none">{t.title}</span>
+                {t.icon ? <img src={t.icon} alt="" className="h-7 w-7" style={{ filter: 'brightness(0) saturate(100%) invert(54%) sepia(60%) saturate(418%) hue-rotate(9deg) brightness(92%) contrast(86%)' }} /> : <span className="h-7 w-7" aria-hidden="true" />}
+                <span className="text-xs leading-none">{t.title}</span>
               </button>
             );
           })}
@@ -353,19 +353,19 @@ const Sidebar = () => {
         <div className="fixed inset-0 flex">
           <Dialog.Panel className="ml-auto h-full w-full max-w-md bg-white p-4 overflow-y-auto">
             <div className="flex items-center justify-between">
-              <Dialog.Title className="text-base font-semibold text-gray-900">
+              <Dialog.Title className="text-lg font-semibold text-[#b69624]">
                 {drawerRoot?.title || "Menu"}
               </Dialog.Title>
               <button
                 type="button"
                 onClick={closeDrawer}
-                className="px-3 py-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#b69624] text-[#b69624]"
               >
                 Close
               </button>
             </div>
 
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 space-y-2 text-[#b69624]">
               {drawerRoot?.children?.map((c) => (
                 <DrawerNode key={c.key} node={c} />
               ))}

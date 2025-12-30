@@ -3,6 +3,7 @@ import { useUser } from '@clerk/clerk-react';
 import Navbar from './hotelOwner/Navbar';
 import Sidebar from './hotelOwner/Sidebar';
 import { Outlet } from 'react-router-dom';
+import patternBg from '../assets/pattern_gold_2x.png';
 
 const OwnerLayout = () => {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -25,11 +26,11 @@ const OwnerLayout = () => {
   }
 
   return (
-    <div className='flex flex-col h-screen'>
+    <div className='flex flex-col h-screen' style={{ backgroundImage: `url(${patternBg})`, backgroundRepeat: 'repeat' }}>
       <Navbar/>
       <div className='flex h-full'>
         <Sidebar />
-        <div className='flex-1 p-4 pt-10 md:px-10 h-full overflow-y-auto'>
+        <div className='flex-1 p-4 pt-20 md:px-10 h-full overflow-y-auto'>
           <Outlet/>
         </div>
       </div>

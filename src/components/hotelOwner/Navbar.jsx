@@ -175,7 +175,7 @@ const Navbar = () => {
     });
   }, [nav, canAccessModule, isLoaded]);
 
-  // Determine active section based on current path
+  // Determine active section based on current path (same logic as Sidebar)
   const getActiveSection = () => {
     const path = location.pathname;
     for (const item of filteredNav) {
@@ -199,83 +199,128 @@ const Navbar = () => {
   const activeSection = getActiveSection();
   const secondLevelItems = activeSection?.children || [];
 
-  const toggleDropdown = (key) => {
-    setOpenDropdown(prev => prev === key ? null : key);
-  };
+  const renderNavItem = (item) => {
+    const hasChildren = item.children && item.children.length > 0;
+    const isActive = item.path && location.pathname.startsWith(item.path);
+    const isDropdownOpen = openDropdown === item.key;
 
-  return (
-    <div className='border-b border-gray-300 bg-white'>
-      {/* Top row: Logo and User */}
-      <div className='flex items-center justify-between px-4 md:px-8 py-3'>
-        <Link to='/'>
-          <img src={assets.logo} alt="logo" className='h-9 invert opacity-80'/>
-        </Link>
-        <UserButton/>
-      </div>
+    if (!hasChildren) {
+      // Direct link (no children)
+      return (
+        <NavLink
+          key={item.key}
+          to={item.path}
+          className={({ isActive }) =>
+            `group flex flex-col gap-0.5 text-[#b69624] text-base ${
+              isActive ? 'font-medium' : ''
+            }`
+          }
+        >
+          {item.title}
+          <div className={`bg-[#b69624] h-0.5 w-0 group-hover:w-full transition-all duration-300 ${
+            isActive ? 'w-full' : ''
+          }`} />
+        </NavLink>
+      );
+    }
 
-      {/* Second row: Second-level tabs (only show if there's an active section with children) */}
-      {secondLevelItems.length > 0 && (
-        <div className='hidden md:flex items-center gap-1 px-4 md:px-8 pb-2 overflow-x-auto'>
-          {secondLevelItems.map((item) => {
-            const hasChildren = item.children && item.children.length > 0;
-            const isActive = item.path && location.pathname.startsWith(item.path);
-            const isDropdownOpen = openDropdown === item.key;
+    // Item with children (dropdown)
+    return (
+      <div
+        key={item.key}
+        className="relative group"
+        onMouseEnter={() => setOpenDropdown(item.key)}
+        onMouseLeave={() => setOpenDropdown(null)}
+      >
+        <button className="flex items-center gap-1 text-[#b69624] text-base">
+          {item.title}
+          <svg className={`w-5 h-5 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
 
-            if (!hasChildren) {
-              // Direct link (second-level with no children)
+        {/* Dropdown Menu */}
+        <div className={`absolute top-full left-0 mt-2 w-48 bg-white shadow-lg rounded-lg overflow-hidden transition-all duration-300 ${isDropdownOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
+          {item.children.map((child) => {
+            const hasGrandChildren = child.children && child.children.length > 0;
+
+            if (!hasGrandChildren) {
               return (
                 <NavLink
-                  key={item.key}
-                  to={item.path}
+                  key={child.key}
+                  to={child.path}
                   className={({ isActive }) =>
-                    `px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
-                      isActive ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'
+                    `block px-4 py-3 text-[#b69624] hover:bg-gray-100 transition-colors text-base border-b border-gray-100 last:border-b-0 ${
+                      isActive ? 'bg-gray-100 font-medium' : ''
                     }`
                   }
                 >
-                  {item.title}
+                  {child.title}
                 </NavLink>
               );
             }
 
-            // Second-level item with third-level children (dropdown)
+            // Third-level dropdown (nested)
+            const isChildDropdownOpen = openDropdown === child.key;
             return (
-              <div key={item.key} className='relative'>
-                <button
-                  onClick={() => toggleDropdown(item.key)}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap flex items-center gap-2 ${
-                    isActive || isDropdownOpen ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {item.title}
-                  <span className='text-xs'>{isDropdownOpen ? '▾' : '▸'}</span>
+              <div
+                key={child.key}
+                className="relative group/nested"
+                onMouseEnter={() => setOpenDropdown(child.key)}
+              >
+                <button className="w-full flex items-center justify-between px-4 py-3 text-[#b69624] hover:bg-gray-100 transition-colors text-base border-b border-gray-100 last:border-b-0">
+                  {child.title}
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
 
-                {/* Third-level dropdown */}
-                {isDropdownOpen && (
-                  <div className='absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg min-w-[200px] z-50'>
-                    {item.children.map((child) => (
-                      <NavLink
-                        key={child.key}
-                        to={child.path}
-                        onClick={() => setOpenDropdown(null)}
-                        className={({ isActive }) =>
-                          `block px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
-                            isActive ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700'
-                          }`
-                        }
-                      >
-                        {child.title}
-                      </NavLink>
-                    ))}
-                  </div>
-                )}
+                {/* Nested Dropdown */}
+                <div className={`absolute left-full top-0 ml-1 w-48 bg-white shadow-lg rounded-lg overflow-hidden transition-all duration-300 ${isChildDropdownOpen ? 'opacity-100 visible translate-x-0' : 'opacity-0 invisible -translate-x-2'}`}>
+                  {child.children.map((grandChild) => (
+                    <NavLink
+                      key={grandChild.key}
+                      to={grandChild.path}
+                      className={({ isActive }) =>
+                        `block px-4 py-3 text-[#b69624] hover:bg-gray-100 transition-colors text-base border-b border-gray-100 last:border-b-0 ${
+                          isActive ? 'bg-gray-100 font-medium' : ''
+                        }`
+                      }
+                    >
+                      {grandChild.title}
+                    </NavLink>
+                  ))}
+                </div>
               </div>
             );
           })}
         </div>
-      )}
-    </div>
+      </div>
+    );
+  };
+
+  return (
+    <nav className="fixed top-0 left-0 w-full flex items-center justify-between px-4 md:px-16 lg:px-24 xl:px-32 bg-white/60 shadow-md text-[#b69624] backdrop-blur-lg py-3 md:py-4 transition-all duration-500 z-50">
+      {/* Logo */}
+      <Link to='/'>
+        <img src={assets.logo} alt="logo" className="h-9 invert opacity-80" />
+      </Link>
+
+      {/* Desktop Nav - Only show second-level items from active section */}
+      <div className="hidden md:flex items-center gap-4 lg:gap-8">
+        {secondLevelItems.map(renderNavItem)}
+      </div>
+
+      {/* Desktop Right */}
+      <div className="hidden md:flex items-center gap-4">
+        <UserButton />
+      </div>
+
+      {/* Mobile Menu Button */}
+      <div className="flex items-center gap-3 md:hidden">
+        <UserButton />
+      </div>
+    </nav>
   )
 }
 

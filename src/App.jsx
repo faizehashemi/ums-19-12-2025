@@ -20,6 +20,7 @@ import RouteFour from './pages/RouteFour';
 import RouteFive from './pages/RouteFive';
 import { exclusiveOffers } from './assets/assets';
 import Information from './pages/Information';
+import { ToastProvider } from './components/ui/Toast';
 
 // Owner module imports
 import OwnerDashboard from './modules/owner/dashboard/Dashboard';
@@ -85,11 +86,12 @@ const App = () => {
   };
 
   return (
-    <div>
-     {!isOwnerPath && <Navbar />}
-     {false && <HotelReg />}
-     <div className='min-h-[70vh]'>
-      <Routes>
+    <ToastProvider>
+      <div>
+       {!isOwnerPath && <Navbar />}
+       {false && <HotelReg />}
+       <div className='min-h-[70vh]'>
+        <Routes>
         <Route path='/' element={<Home/>} />
         <Route path='/information' element={<Information/>} />
         <Route path='/rooms' element={<AllRooms/>} />
@@ -185,10 +187,11 @@ const App = () => {
             <Route path="system/users-roles" element={<UsersRoles/>} />
             <Route path="system/settings" element={<Settings/>} />
         </Route>
-      </Routes>
-     </div>
-     <Footer />
-    </div>
+        </Routes>
+       </div>
+       <Footer />
+      </div>
+    </ToastProvider>
   )
 }
 

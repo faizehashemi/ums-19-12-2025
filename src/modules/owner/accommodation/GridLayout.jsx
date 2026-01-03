@@ -360,10 +360,20 @@ const GridLayout = () => {
       if (error) throw error;
 
       setRoomsList(prev => prev.filter(r => r.id !== roomId));
-      showToast(`Room ${room.number} deleted`, 'success');
+      showToast(`Room ${room?.number || roomId} deleted`, 'success');
+      return true;
     } catch (error) {
       console.error('Error deleting room:', error);
       showToast('Failed to delete room', 'error');
+      return false;
+    }
+  };
+
+  const handleDrawerDelete = async (roomId) => {
+    const deleted = await handleDeleteRoom(roomId);
+    if (deleted) {
+      setDrawerOpen(false);
+      setSelectedRoom(null);
     }
   };
 
@@ -596,6 +606,7 @@ const GridLayout = () => {
         onClose={() => setDrawerOpen(false)}
         room={selectedRoom}
         onAction={handleRoomAction}
+        onDelete={handleDrawerDelete}
       />
 
       {/* Building Modal */}

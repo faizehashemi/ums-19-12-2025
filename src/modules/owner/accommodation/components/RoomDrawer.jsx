@@ -1,11 +1,19 @@
-import { useState } from 'react';
 import Drawer from '../../../../components/ui/Drawer';
 import Button from '../../../../components/ui/Button';
 import StatusPill from '../../../../components/accommodation/StatusPill';
-import { Users, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { Users, Clock, AlertCircle, Trash2 } from 'lucide-react';
 
-const RoomDrawer = ({ isOpen, onClose, room, onAction }) => {
+const RoomDrawer = ({ isOpen, onClose, room, onAction, onDelete }) => {
   if (!room) return null;
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+
+    const confirmed = window.confirm(`Delete room ${room.number}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    await onDelete(room.id);
+  };
 
   return (
     <Drawer isOpen={isOpen} onClose={onClose} title={`Room ${room.number}`}>
@@ -108,6 +116,14 @@ const RoomDrawer = ({ isOpen, onClose, room, onAction }) => {
             Report Issue
           </Button>
         )}
+        <Button
+          variant="danger"
+          full
+          onClick={handleDelete}
+          icon={<Trash2 className="w-4 h-4" />}
+        >
+          Delete Room
+        </Button>
       </Drawer.Footer>
     </Drawer>
   );

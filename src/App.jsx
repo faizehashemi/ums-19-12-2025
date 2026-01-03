@@ -1,11 +1,12 @@
 import React from 'react'
 import Navbar from './components/Navbar'
 import { Route, Routes, useLocation } from 'react-router-dom'
-import Home from './pages/Home';
+import Login from './pages/Login';
 import Footer from './components/Footer';
 import AllRooms from './pages/AllRooms';
 import RoomDetails from './pages/RoomDetails';
 import MyBookings from './pages/MyBookings';
+import AboutUs from './pages/AboutUs';
 import HotelReg from './components/HotelReg';
 import OwnerLayout from './components/OwnerLayout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -26,8 +27,6 @@ import { ToastProvider } from './components/ui/Toast';
 import OwnerDashboard from './modules/owner/dashboard/Dashboard';
 import Pending from './modules/owner/reservations/Pending';
 import Approved from './modules/owner/reservations/Approved';
-import CreateTourOperator from './modules/owner/reservations/CreateTourOperator';
-import CreateIndividuals from './modules/owner/reservations/CreateIndividuals';
 import LawazimCollection from './modules/owner/accounts/LawazimCollection';
 import NiyazCollection from './modules/owner/accounts/NiyazCollection';
 import CashSubmission from './modules/owner/accounts/CashSubmission';
@@ -54,7 +53,6 @@ import VehicleMaintenance from './modules/owner/transport/VehicleMaintenance';
 import DriverManagement from './modules/owner/transport/DriverManagement';
 import Housekeeping from './modules/owner/accommodation/Housekeeping';
 import Maintenance from './modules/owner/accommodation/Maintenance';
-import Allocation from './modules/owner/accommodation/Allocation';
 import CheckinsCheckouts from './modules/owner/accommodation/CheckinsCheckouts';
 import GridLayout from './modules/owner/accommodation/GridLayout';
 import VacancyForecast from './modules/owner/accommodation/VacancyForecast';
@@ -74,7 +72,8 @@ import UsersRoles from './modules/owner/system/UsersRoles';
 import Settings from './modules/owner/system/Settings';
 const App = () => {
 
-  const isOwnerPath = useLocation().pathname.includes("owner");
+  const location = useLocation();
+  const isOwnerPath = location.pathname.includes("owner");
 
   // Dynamic route components mapping
   const routeComponents = {
@@ -92,8 +91,9 @@ const App = () => {
        {false && <HotelReg />}
        <div className='min-h-[70vh]'>
         <Routes>
-        <Route path='/' element={<Home/>} />
+        <Route path='/' element={<Login/>} />
         <Route path='/information' element={<Information/>} />
+        <Route path='/aboutUs' element={<AboutUs/>} />
         <Route path='/rooms' element={<AllRooms/>} />
         {/* Dynamic routes based on exclusiveOffers data */}
         {exclusiveOffers.map((offer, index) => {
@@ -126,8 +126,6 @@ const App = () => {
             {/* Reservations */}
             <Route path="reservations/pending" element={<Pending/>} />
             <Route path="reservations/approved" element={<Approved/>} />
-            <Route path="reservations/create/tour-operator" element={<CreateTourOperator/>} />
-            <Route path="reservations/create/individuals" element={<CreateIndividuals/>} />
 
             {/* Accounts */}
             <Route path="accounts/lawazim-collection" element={<LawazimCollection/>} />
@@ -162,7 +160,6 @@ const App = () => {
             {/* Accommodation */}
             <Route path="accommodation/housekeeping" element={<Housekeeping/>} />
             <Route path="accommodation/maintenance" element={<Maintenance/>} />
-            <Route path="accommodation/allocation" element={<Allocation/>} />
             <Route path="accommodation/checkins-checkouts" element={<CheckinsCheckouts/>} />
             <Route path="accommodation/grid-layout" element={<GridLayout/>} />
             <Route path="accommodation/vacancy-forecast" element={<VacancyForecast/>} />

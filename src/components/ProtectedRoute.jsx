@@ -1,4 +1,4 @@
-import { useUser } from '@clerk/clerk-react';
+import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
 import { canAccessRoute } from '../utils/permissions';
 
@@ -12,7 +12,7 @@ export default function ProtectedRoute({
   redirectTo = '/',
   fallback = null
 }) {
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded, isAuthenticated, profile } = useAuth();
   const location = useLocation();
 
   if (!isLoaded) {
@@ -23,12 +23,24 @@ export default function ProtectedRoute({
     );
   }
 
-  if (requireAuth && !isSignedIn) {
+  if (requireAuth && !isAuthenticated) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
+  // A user is authenticated but has no profile.
+  // Redirect them to complete their profile information.
+  // This is a critical step to ensure data integrity and proper authorization.
+  // We also check if the user is already on the information page, to prevent a redirect loop
+  if (
+    isAuthenticated &&
+    !profile &&
+    location.pathname !== '/information'
+  ) {
+    return <Navigate to="/information" state={{ from: location }} replace />;
+  }
+
   if (requiredRole) {
-    const userRole = user?.publicMetadata?.role;
+    const userRole = profile?.role;
 
     if (Array.isArray(requiredRole)) {
       if (!requiredRole.includes(userRole)) {
@@ -39,10 +51,10 @@ export default function ProtectedRoute({
     }
   }
 
-  if (isSignedIn && user) {
+  if (isAuthenticated && profile) {
     const currentPath = location.pathname;
 
-    if (!canAccessRoute(user, currentPath)) {
+    if (!canAccessRoute(profile, currentPath)) {
       return fallback || <Navigate to="/unauthorized" replace />;
     }
   }

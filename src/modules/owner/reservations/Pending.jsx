@@ -69,8 +69,7 @@ const Pending = () => {
       const { data, error } = await supabase
         .from('reservations')
         .update({
-          status: 'approved',
-          approved_at: new Date().toISOString()
+          status: 'approved'
         })
         .eq('id', reservation.id)
         .select();
@@ -104,9 +103,7 @@ const Pending = () => {
       const { data, error } = await supabase
         .from('reservations')
         .update({
-          status: 'rejected',
-          rejected_at: new Date().toISOString(),
-          rejection_reason: reason
+          status: 'rejected'
         })
         .eq('id', reservation.id)
         .select();
@@ -119,7 +116,7 @@ const Pending = () => {
         throw new Error('No rows were updated. Check RLS policies or reservation ID.');
       }
 
-      alert('Reservation rejected successfully!');
+      alert(`Reservation rejected successfully! Reason: ${reason}`);
       setShowRejectionModal(false);
       setSelectedReservation(null);
       fetchPendingReservations();

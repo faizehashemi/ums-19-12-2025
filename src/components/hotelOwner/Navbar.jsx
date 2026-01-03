@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { assets } from '../../assets/assets'
-import { UserButton } from '@clerk/clerk-react'
+import { useAuth } from '../../contexts/AuthContext'
 import { usePermissions } from '../../hooks/usePermissions'
 import { MODULE_KEYS } from '../../config/rolePermissions'
 
@@ -21,15 +21,7 @@ const Navbar = () => {
         icon: assets.reservationIcon,
         children: [
           { key: "res-pending", title: "Pending", path: "/owner/reservations/pending" },
-          { key: "res-approved", title: "Approved", path: "/owner/reservations/approved" },
-          {
-            key: "res-create",
-            title: "Create Reservations",
-            children: [
-              { key: "res-create-tour", title: "Tour Operator", path: "/owner/reservations/create/tour-operator" },
-              { key: "res-create-ind", title: "Individuals", path: "/owner/reservations/create/individuals" }
-            ]
-          }
+          { key: "res-approved", title: "Approved", path: "/owner/reservations/approved" }
         ]
       },
 
@@ -100,7 +92,6 @@ const Navbar = () => {
         children: [
           { key: "ac-housekeeping", title: "Housekeeping", path: "/owner/accommodation/housekeeping" },
           { key: "ac-maint", title: "Maintenance", path: "/owner/accommodation/maintenance" },
-          { key: "ac-alloc", title: "Allocation", path: "/owner/accommodation/allocation" },
           { key: "ac-check", title: "Check-ins & Check-outs", path: "/owner/accommodation/checkins-checkouts" },
           { key: "ac-grid", title: "Grid Layout", path: "/owner/accommodation/grid-layout" },
           { key: "ac-vacancy", title: "Vacancy Forecast", path: "/owner/accommodation/vacancy-forecast" }
@@ -313,14 +304,47 @@ const Navbar = () => {
 
       {/* Desktop Right */}
       <div className="hidden md:flex items-center gap-4">
-        <UserButton />
+        <UserMenu />
       </div>
 
       {/* Mobile Menu Button */}
       <div className="flex items-center gap-3 md:hidden">
-        <UserButton />
+        <UserMenu />
       </div>
     </nav>
+  )
+}
+
+const UserMenu = () => {
+  const { user, profile, signOut } = useAuth()
+  const [isOpen, setIsOpen] = useState(false)
+
+  if (!user) return null
+
+  return (
+    <div className="relative group" onMouseEnter={() => setIsOpen(true)} onMouseLeave={() => setIsOpen(false)}>
+      <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 hover:bg-amber-500/20 transition-all">
+        <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-semibold">
+          {profile?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
+        </div>
+        <span className="text-[#b69624]">
+          {profile?.full_name || user?.email?.split('@')[0] || 'User'}
+        </span>
+      </button>
+
+      <div className={`absolute right-0 top-full mt-2 w-48 bg-white shadow-lg rounded-lg overflow-hidden transition-all duration-300 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+        <div className="px-4 py-3 border-b border-gray-100">
+          <p className="text-sm text-gray-600">Role</p>
+          <p className="text-sm font-medium text-[#b69624] capitalize">{profile?.role || 'Guest'}</p>
+        </div>
+        <button
+          onClick={() => signOut()}
+          className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors text-sm"
+        >
+          Sign Out
+        </button>
+      </div>
+    </div>
   )
 }
 

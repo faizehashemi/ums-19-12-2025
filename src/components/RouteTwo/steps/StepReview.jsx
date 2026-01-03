@@ -179,25 +179,62 @@ const StepReview = ({
           </button>
         </div>
         <div className="space-y-3 text-sm">
-          <div className="flex justify-between border-b border-gray-200 pb-2">
-            <span className="text-gray-700">Base Fee:</span>
-            <span className="font-medium text-gray-800">SAR {fees.baseFee}</span>
+          {/* Accommodation Fees */}
+          <div className="border-b border-gray-200 pb-3">
+            <h4 className="font-semibold text-gray-800 mb-2">Accommodation Lawazim</h4>
+            <div className="flex justify-between pl-3 mb-1">
+              <span className="text-gray-700">Base Fee (per person):</span>
+              <span className="font-medium text-gray-800">SAR {fees.baseFee}</span>
+            </div>
+            <div className="flex justify-between pl-3 mb-1">
+              <span className="text-gray-700">Accommodation Fee ({accommodation}):</span>
+              <span className="font-medium text-gray-800">SAR {fees.accommodationFee}</span>
+            </div>
+            <div className="flex justify-between pl-3 mb-1">
+              <span className="text-gray-700">Per Person Fee:</span>
+              <span className="font-medium text-gray-800">SAR {fees.perPersonFee}</span>
+            </div>
+            <div className="flex justify-between pl-3">
+              <span className="text-gray-700">Number of Members:</span>
+              <span className="font-medium text-gray-800">{fees.numMembers}</span>
+            </div>
           </div>
-          <div className="flex justify-between border-b border-gray-200 pb-2">
-            <span className="text-gray-700">Accommodation Fee ({accommodation}):</span>
-            <span className="font-medium text-gray-800">SAR {fees.accommodationFee}</span>
+
+          {/* Transport Fees */}
+          <div className="border-b border-gray-200 pb-3">
+            <h4 className="font-semibold text-gray-800 mb-2">Transport Lawazim</h4>
+            <div className="flex justify-between pl-3 mb-1">
+              <span className="text-gray-700">Transport Fee (per person) - Route 1:</span>
+              <span className="font-medium text-gray-800">
+                {fees.transportFeePerPerson > 0 ? `SAR ${fees.transportFeePerPerson}` : 'N/A'}
+              </span>
+            </div>
+            <div className="flex justify-between pl-3 mb-1">
+              <span className="text-gray-700">Total Transport Fee:</span>
+              <span className="font-medium text-gray-800">
+                {fees.totalTransportFee > 0 ? `SAR ${fees.totalTransportFee}` : 'N/A'}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 pl-3 mt-2 italic">
+              Route 1: Jeddah Airport → Makkah → Atraf Makkah → Madina → Atraf Madina → Makkah → Jeddah Airport
+            </p>
           </div>
-          <div className="flex justify-between border-b border-gray-200 pb-2">
-            <span className="text-gray-700">Per Person Fee:</span>
-            <span className="font-medium text-gray-800">SAR {fees.perPersonFee}</span>
+
+          {/* Subtotal and VAT */}
+          <div className="border-b border-gray-200 pb-3">
+            <div className="flex justify-between mb-2">
+              <span className="text-gray-700">Subtotal (before VAT):</span>
+              <span className="font-medium text-gray-800">SAR {fees.subtotal?.toFixed(2) || '0.00'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-700">VAT (15%):</span>
+              <span className="font-medium text-gray-800">SAR {fees.vat?.toFixed(2) || '0.00'}</span>
+            </div>
           </div>
-          <div className="flex justify-between border-b border-gray-200 pb-2">
-            <span className="text-gray-700">Number of Members:</span>
-            <span className="font-medium text-gray-800">{fees.numMembers}</span>
-          </div>
+
           <div className="flex justify-between pt-2">
-            <span className="text-lg font-semibold text-gray-900">Total Fee:</span>
-            <span className="text-lg font-bold text-amber-600">SAR {fees.total}</span>
+            <span className="text-lg font-semibold text-gray-900">Total Fee (including VAT):</span>
+            <span className="text-lg font-bold text-amber-600">SAR {fees.total?.toFixed(2) || '0.00'}</span>
           </div>
         </div>
       </div>

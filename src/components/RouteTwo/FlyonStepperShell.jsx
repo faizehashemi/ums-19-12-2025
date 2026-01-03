@@ -12,6 +12,7 @@ export default function FlyonStepperShell({
   onPrev,
   onNext,
   onFinish,
+  onStepClick, // Optional callback for step navigation
   canGoPrev = true,
   canGoNext = true,
   isFinal = false,
@@ -58,10 +59,16 @@ export default function FlyonStepperShell({
                 max-sm:flex-row max-sm:items-center max-sm:flex-none
               "
             >
-              <span
+              <button
+                type="button"
+                onClick={() => onStepClick?.(stepIndex)}
+                disabled={submitting}
                 className="
                   min-h-7.5 inline-flex flex-col items-center gap-2 align-middle text-sm
                   max-sm:flex-row max-sm:gap-2
+                  cursor-pointer hover:opacity-80 transition-opacity
+                  disabled:cursor-not-allowed disabled:opacity-50
+                  focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2 rounded-lg
                 "
               >
                 <span
@@ -79,7 +86,7 @@ export default function FlyonStepperShell({
                 >
                   {label}
                 </span>
-              </span>
+              </button>
 
               {/* Connector: vertical on md+, horizontal on small */}
               <div

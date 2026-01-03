@@ -7,8 +7,10 @@ import StepAccommodation from "./steps/StepAccommodation";
 import StepFees from "./steps/StepFees";
 import StepReview from "./steps/StepReview";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function RouteTwoForm() {
+  const { user } = useAuth();
   const steps = ["Travel", "Members", "Documents", "Accommodation", "Fees", "Review"];
   const totalPages = steps.length;
 
@@ -43,6 +45,8 @@ export default function RouteTwoForm() {
   // Page 4 state
   const [accommodation, setAccommodation] = useState("");
   const [westernToilet, setWesternToilet] = useState(false);
+  const [makkahDays, setMakkahDays] = useState("");
+  const [madinaDays, setMadinaDays] = useState("");
 
   const countries = useMemo(
     () => [
@@ -134,28 +138,22 @@ export default function RouteTwoForm() {
         alert("Please add at least one member");
         return false;
       }
-      for (let member of members) {
-        const data = memberData[member.id];
-        if (
-          !data ||
-          !data.name ||
-          !data.itsNo ||
-          !data.phone ||
-          !data.email ||
-          !data.visaType ||
-          !data.passportName ||
-          !data.passportNumber ||
-          !data.dateOfBirth
-        ) {
-          alert("Please fill in all member details");
-          return false;
-        }
-      }
+      // All member fields are now optional
     }
 
-    if (currentPage === 4 && !accommodation) {
-      alert("Please select accommodation type");
-      return false;
+    if (currentPage === 4) {
+      if (!accommodation) {
+        alert("Please select accommodation type");
+        return false;
+      }
+      if (!makkahDays || makkahDays <= 0) {
+        alert("Please enter number of days in Makkah");
+        return false;
+      }
+      if (!madinaDays || madinaDays <= 0) {
+        alert("Please enter number of days in Madina");
+        return false;
+      }
     }
 
     return true;
@@ -179,43 +177,94 @@ export default function RouteTwoForm() {
 
   // ---- Fees + submit ----
   const calculateTransportFee = (numPassengers) => {
-    // Route 2 pricing (using same as Route 1 for now)
-    if (numPassengers >= 2 && numPassengers <= 4) return 400;
-    if (numPassengers >= 5 && numPassengers <= 8) return 300;
-    if (numPassengers >= 9 && numPassengers <= 24) return 250;
-    if (numPassengers >= 25 && numPassengers <= 39) return 200;
-    if (numPassengers >= 40 && numPassengers <= 49) return 180;
+    // Route 2 pricing: Jeddah Airport → Makkah → Atraf Makkah → Madina → Atraf Madina → Madina Airport
+    if (numPassengers >= 2 && numPassengers <= 4) return 300;
+    if (numPassengers >= 5 && numPassengers <= 8) return 250;
+    if (numPassengers >= 9 && numPassengers <= 24) return 200;
+    if (numPassengers >= 25 && numPassengers <= 39) return 150;
+    if (numPassengers >= 40 && numPassengers <= 49) return 100;
     return 0; // No transport for less than 2 or more than 49
   };
 
   const calculateFees = () => {
-    const baseFee = 500;
-    const accommodationFee = accommodation === "Private" ? 300 : 150;
-    const perPersonFee = baseFee + accommodationFee;
+    // Pricing schema based on age category and location
+    const pricing = {
+      Makkah: {
+        Sharing: { Adult: 130, Child: 65, Infant: 0 },
+        Exclusive: { Adult: 170, Child: 85, Infant: 0 }
+      },
+      Madina: {
+        Sharing: { Adult: 130, Child: 65, Infant: 0 }
+      }
+    };
+
+    let makkahTotal = 0;
+    let madinaTotal = 0;
+    const memberBreakdown = [];
+
+    // Calculate accommodation fees for each member
+    members.forEach((member) => {
+      const data = memberData[member.id];
+      const ageCategory = data?.ageCategory || "Adult";
+
+      // Makkah calculation - use the selected accommodation type
+      const makkahRate = pricing.Makkah[accommodation]?.[ageCategory] || 0;
+      const makkahFee = makkahRate * parseFloat(makkahDays || 0);
+
+      // Madina calculation (only Sharing available)
+      const madinaRate = pricing.Madina.Sharing[ageCategory] || 0;
+      const madinaFee = madinaRate * parseFloat(madinaDays || 0);
+
+      makkahTotal += makkahFee;
+      madinaTotal += madinaFee;
+
+      memberBreakdown.push({
+        name: data?.name || `Member ${member.id}`,
+        ageCategory,
+        makkahRate,
+        makkahDays: parseFloat(makkahDays || 0),
+        makkahFee,
+        madinaRate,
+        madinaDays: parseFloat(madinaDays || 0),
+        madinaFee,
+        totalFee: makkahFee + madinaFee
+      });
+    });
+
+    // Total accommodation fees
+    const totalAccommodationFees = makkahTotal + madinaTotal;
+
+    // Municipal Tax (2.5% on accommodation fees)
+    const municipalTax = totalAccommodationFees * 0.025;
 
     // Transport calculation
     const transportFeePerPerson = calculateTransportFee(members.length);
     const totalTransportFee = transportFeePerPerson * members.length;
 
-    // Subtotal before VAT
-    const subtotal = (perPersonFee * members.length) + totalTransportFee;
+    // Subtotal before VAT (accommodation + municipal tax + transport)
+    const subtotalBeforeVAT = totalAccommodationFees + municipalTax + totalTransportFee;
 
-    // VAT calculation (15% on accommodation and transport fees)
-    const vat = subtotal * 0.15;
+    // VAT (15% on accommodation fees, municipal tax, and transport)
+    const vat = subtotalBeforeVAT * 0.15;
 
     // Total including VAT
-    const total = subtotal + vat;
+    const total = subtotalBeforeVAT + vat;
 
     return {
-      baseFee,
-      accommodationFee,
-      perPersonFee,
+      makkahTotal,
+      madinaTotal,
+      totalAccommodationFees,
+      municipalTax,
       transportFeePerPerson,
       totalTransportFee,
-      subtotal,
+      subtotalBeforeVAT,
       vat,
-      numMembers: members.length,
       total,
+      numMembers: members.length,
+      memberBreakdown,
+      makkahDays: parseFloat(makkahDays || 0),
+      madinaDays: parseFloat(madinaDays || 0),
+      makkahRoomType: accommodation
     };
   };
 
@@ -243,21 +292,37 @@ export default function RouteTwoForm() {
         .from('reservations')
         .insert([
           {
+            user_id: user?.id,
+            // Travel details as JSONB
             travel_details: travelDetails,
+
+            // Members as JSONB
             members: members.map((m) => ({
               ...memberData[m.id],
               documents: documents[m.id] || {},
             })),
+
+            // Accommodation
             accommodation: accommodation,
-            base_fee: fees.baseFee,
-            accommodation_fee: fees.accommodationFee,
-            per_person_fee: fees.perPersonFee,
+            western_toilet: westernToilet,
+            makkah_days: fees.makkahDays,
+            madina_days: fees.madinaDays,
+            makkah_room_type: accommodation,
+
+            // Fees
+            makkah_total: fees.makkahTotal,
+            madina_total: fees.madinaTotal,
+            total_accommodation_fees: fees.totalAccommodationFees,
+            municipal_tax: fees.municipalTax,
             transport_fee_per_person: fees.transportFeePerPerson,
             total_transport_fee: fees.totalTransportFee,
-            subtotal: fees.subtotal,
+            subtotal_before_vat: fees.subtotalBeforeVAT,
             vat: fees.vat,
             num_members: fees.numMembers,
             total_fee: fees.total,
+            member_breakdown: fees.memberBreakdown,
+
+            // Status
             status: 'pending'
           }
         ])
@@ -286,6 +351,7 @@ export default function RouteTwoForm() {
       onPrev={prevPage}
       onNext={nextPage}
       onFinish={currentPage === totalPages ? null : nextPage}
+      onStepClick={goToStep}
       isFinal={currentPage === totalPages}
       submitting={submitting}
     >
@@ -324,6 +390,11 @@ export default function RouteTwoForm() {
           setAccommodation={setAccommodation}
           westernToilet={westernToilet}
           setWesternToilet={setWesternToilet}
+          makkahDays={makkahDays}
+          setMakkahDays={setMakkahDays}
+          madinaDays={madinaDays}
+          setMadinaDays={setMadinaDays}
+          travelDetails={travelDetails}
         />
       )}
 

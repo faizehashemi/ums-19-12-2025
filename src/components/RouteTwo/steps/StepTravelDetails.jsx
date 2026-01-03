@@ -1,14 +1,54 @@
 import React from "react";
+import Select from "react-select";
 import FlightSelector from "../../common/FlightSelector";
+import countriesData from "../../../data/countries.json";
 
 export default function StepTravelDetails({
   travelDetails,
   setTravelDetails,
-  countries,
   airlines,
 }) {
   const setField = (key) => (e) =>
     setTravelDetails({ ...travelDetails, [key]: e.target.value });
+
+  // Prepare country options for React Select
+  const countryOptions = countriesData.countries.map((country) => ({
+    value: country,
+    label: country,
+  }));
+
+  // Convert 12-hour time format to 24-hour format for datetime-local input
+  const convertTo24Hour = (time12h) => {
+    if (!time12h) return "";
+
+    const [time, period] = time12h.split(' ');
+    let [hours, minutes] = time.split(':');
+
+    hours = parseInt(hours);
+
+    if (period === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+
+    return `${hours.toString().padStart(2, '0')}:${minutes}`;
+  };
+
+  // Update datetime field with only time, keeping existing date
+  const updateTimeOnly = (currentDateTime, newTime) => {
+    const time24h = convertTo24Hour(newTime);
+    if (!time24h) return currentDateTime;
+
+    if (currentDateTime) {
+      // If there's already a date, keep it and update only time
+      const [datePart] = currentDateTime.split('T');
+      return `${datePart}T${time24h}`;
+    } else {
+      // If no date yet, return empty (user must select date first)
+      return "";
+    }
+  };
 
   // Handle arrival flight selection
   const handleArrivalFlightSelect = (flight) => {
@@ -17,7 +57,7 @@ export default function StepTravelDetails({
         ...travelDetails,
         airline: flight.airline,
         flightNo: flight.flightNumber,
-        arrivalDateTime: "", // User will set this separately
+        arrivalDateTime: updateTimeOnly(travelDetails.arrivalDateTime, flight.time),
       });
     } else {
       setTravelDetails({
@@ -35,7 +75,7 @@ export default function StepTravelDetails({
         ...travelDetails,
         departureAirline: flight.airline,
         departureFlightNo: flight.flightNumber,
-        departureDateTime: "", // User will set this separately
+        departureDateTime: updateTimeOnly(travelDetails.departureDateTime, flight.time),
       });
     } else {
       setTravelDetails({
@@ -57,16 +97,44 @@ export default function StepTravelDetails({
         {/* Country */}
         <div className="col-span-2 md:col-span-2 lg:col-span-2">
           <label className="block text-gray-700 font-semibold mb-2">Country *</label>
-          <select
-            value={travelDetails.country}
-            onChange={setField("country")}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:outline-none"
-          >
-            <option value="">Select Country</option>
-            {countries.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+          <Select
+            value={countryOptions.find((option) => option.value === travelDetails.country)}
+            onChange={(selectedOption) =>
+              setTravelDetails({
+                ...travelDetails,
+                country: selectedOption ? selectedOption.value : "",
+              })
+            }
+            options={countryOptions}
+            placeholder="Search and select country..."
+            isClearable
+            isSearchable
+            className="react-select-container"
+            classNamePrefix="react-select"
+            styles={{
+              control: (base, state) => ({
+                ...base,
+                padding: "6px 8px",
+                borderWidth: "2px",
+                borderColor: state.isFocused ? "#9333ea" : "#d1d5db",
+                borderRadius: "0.5rem",
+                boxShadow: "none",
+                "&:hover": {
+                  borderColor: state.isFocused ? "#9333ea" : "#d1d5db",
+                },
+              }),
+              option: (base, state) => ({
+                ...base,
+                backgroundColor: state.isSelected
+                  ? "#9333ea"
+                  : state.isFocused
+                  ? "#f3e8ff"
+                  : "white",
+                color: state.isSelected ? "white" : "#374151",
+                cursor: "pointer",
+              }),
+            }}
+          />
         </div>
 
         {/* Travel Mode */}
@@ -131,24 +199,61 @@ export default function StepTravelDetails({
 
         {/* Arrival Flight Selector (conditional) */}
         {travelDetails.travelMode === "By Air" && (
-          <div className="col-span-full">
-            <label className="block text-gray-700 font-semibold mb-2">
-              Arrival Flight Information *
-            </label>
-            <FlightSelector
-              airport="Jeddah Airport"
-              type="arrival"
-              onFlightSelect={handleArrivalFlightSelect}
-              value={
-                travelDetails.airline && travelDetails.flightNo
-                  ? {
-                      airline: travelDetails.airline,
-                      flightNumber: travelDetails.flightNo,
-                    }
-                  : null
-              }
-            />
-          </div>
+          <>
+            <div className="col-span-full">
+              <label className="block text-gray-700 font-semibold mb-2">
+                Arrival Flight Information *
+              </label>
+              <FlightSelector
+                airport="Jeddah Airport"
+                type="arrival"
+                onFlightSelect={handleArrivalFlightSelect}
+                value={
+                  travelDetails.airline && travelDetails.flightNo
+                    ? {
+                        airline: travelDetails.airline,
+                        flightNumber: travelDetails.flightNo,
+                      }
+                    : null
+                }
+              />
+            </div>
+
+            {/* Manual Entry Fallback */}
+            <div className="col-span-full">
+              <p className="text-sm text-gray-600 mb-2">Or enter manually:</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-5">
+                <div className="col-span-2 md:col-span-2 lg:col-span-2">
+                  <label className="block text-gray-700 font-semibold mb-2">
+                    Airline Name *
+                  </label>
+                  <select
+                    value={travelDetails.airline}
+                    onChange={setField("airline")}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:outline-none"
+                  >
+                    <option value="">Select Airline</option>
+                    {airlines.map((a) => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-span-2 md:col-span-2 lg:col-span-2">
+                  <label className="block text-gray-700 font-semibold mb-2">
+                    Flight Number *
+                  </label>
+                  <input
+                    type="text"
+                    value={travelDetails.flightNo}
+                    onChange={setField("flightNo")}
+                    placeholder="e.g., SV123"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         {/* Arrival DateTime */}
@@ -156,10 +261,16 @@ export default function StepTravelDetails({
           <label className="block text-gray-700 font-semibold mb-2">
             Arrival Date and Time *
           </label>
+          {travelDetails.travelMode === "By Air" && (
+            <p className="text-xs text-gray-500 mb-1">
+              Select date manually. Time will auto-fill when you select a flight above.
+            </p>
+          )}
           <input
             type="datetime-local"
             value={travelDetails.arrivalDateTime}
             onChange={setField("arrivalDateTime")}
+            step="900"
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:outline-none"
           />
         </div>
@@ -170,7 +281,7 @@ export default function StepTravelDetails({
             Travel to Madina Date *
           </label>
           <input
-            type="datetime-local"
+            type="date"
             value={travelDetails.travelMadinaDate}
             onChange={setField("travelMadinaDate")}
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:outline-none"
@@ -182,49 +293,95 @@ export default function StepTravelDetails({
           <label className="block text-gray-700 font-semibold mb-2">
             Departure Date and Time *
           </label>
+          {travelDetails.travelMode === "By Air" && (
+            <p className="text-xs text-gray-500 mb-1">
+              Select date manually. Time will auto-fill when you select a flight below.
+            </p>
+          )}
           <input
             type="datetime-local"
             value={travelDetails.departureDateTime}
             onChange={setField("departureDateTime")}
+            step="900"
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:outline-none"
           />
         </div>
 
-        {/* Departure Airport (long) */}
-        <div className="col-span-2 md:col-span-4 lg:col-span-3">
-          <label className="block text-gray-700 font-semibold mb-2">
-            Departure Airport *
-          </label>
-          <select
-            value={travelDetails.departureAirport}
-            onChange={setField("departureAirport")}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:outline-none"
-          >
-            <option value="">Select Airport</option>
-            <option value="Jeddah Airport">Jeddah Airport</option>
-            <option value="Madina Airport">Madina Airport</option>
-          </select>
-        </div>
+        {/* Departure Airport and Flight Information - Only for By Air */}
+        {travelDetails.travelMode === "By Air" && (
+          <>
+            {/* Departure Airport */}
+            <div className="col-span-2 md:col-span-4 lg:col-span-3">
+              <label className="block text-gray-700 font-semibold mb-2">
+                Departure Airport *
+              </label>
+              <select
+                value={travelDetails.departureAirport}
+                onChange={setField("departureAirport")}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:outline-none"
+              >
+                <option value="">Select Airport</option>
+                <option value="Jeddah Airport">Jeddah Airport</option>
+                <option value="Madina Airport">Madina Airport</option>
+              </select>
+            </div>
 
-        {/* Departure Flight Selector */}
-        <div className="col-span-full">
-          <label className="block text-gray-700 font-semibold mb-2">
-            Departure Flight Information *
-          </label>
-          <FlightSelector
-            airport={travelDetails.departureAirport}
-            type="departure"
-            onFlightSelect={handleDepartureFlightSelect}
-            value={
-              travelDetails.departureAirline && travelDetails.departureFlightNo
-                ? {
-                    airline: travelDetails.departureAirline,
-                    flightNumber: travelDetails.departureFlightNo,
-                  }
-                : null
-            }
-          />
-        </div>
+            {/* Departure Flight Selector */}
+            <div className="col-span-full">
+              <label className="block text-gray-700 font-semibold mb-2">
+                Departure Flight Information *
+              </label>
+              <FlightSelector
+                airport={travelDetails.departureAirport}
+                type="departure"
+                onFlightSelect={handleDepartureFlightSelect}
+                value={
+                  travelDetails.departureAirline && travelDetails.departureFlightNo
+                    ? {
+                        airline: travelDetails.departureAirline,
+                        flightNumber: travelDetails.departureFlightNo,
+                      }
+                    : null
+                }
+              />
+            </div>
+
+            {/* Manual Entry Fallback for Departure */}
+            <div className="col-span-full">
+              <p className="text-sm text-gray-600 mb-2">Or enter manually:</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-5">
+                <div className="col-span-2 md:col-span-2 lg:col-span-2">
+                  <label className="block text-gray-700 font-semibold mb-2">
+                    Departure Airline *
+                  </label>
+                  <select
+                    value={travelDetails.departureAirline}
+                    onChange={setField("departureAirline")}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:outline-none"
+                  >
+                    <option value="">Select Airline</option>
+                    {airlines.map((a) => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-span-2 md:col-span-2 lg:col-span-1">
+                  <label className="block text-gray-700 font-semibold mb-2">
+                    Departure Flight No. *
+                  </label>
+                  <input
+                    type="text"
+                    value={travelDetails.departureFlightNo}
+                    onChange={setField("departureFlightNo")}
+                    placeholder="e.g., SV456"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

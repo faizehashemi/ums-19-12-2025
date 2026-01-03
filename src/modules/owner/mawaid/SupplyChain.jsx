@@ -63,7 +63,7 @@ CREATE TABLE mawaid_grn_lines (
 */
 
 import { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from "../../../lib/supabase";
 
 const SupplyChain = () => {
   const [view, setView] = useState("po_list"); // po_list, po_form, receiving, grn_list
@@ -296,10 +296,19 @@ const SupplyChain = () => {
     } else {
       // Update received quantities on PO lines
       for (const line of grnLines) {
-        await supabase
+        // Fetch current received_qty
+        const { data: currentLine } = await supabase
           .from("mawaid_po_lines")
-          .update({ received_qty: supabase.raw(`received_qty + ${line.quantity}`) })
-          .eq("id", line.po_line_id);
+          .select("received_qty")
+          .eq("id", line.po_line_id)
+          .single();
+
+        if (currentLine) {
+          await supabase
+            .from("mawaid_po_lines")
+            .update({ received_qty: (currentLine.received_qty || 0) + line.quantity })
+            .eq("id", line.po_line_id);
+        }
       }
 
       setError("");

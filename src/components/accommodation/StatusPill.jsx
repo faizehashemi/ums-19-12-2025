@@ -58,14 +58,15 @@ const StatusPill = ({ status, size = 'sm', showIcon = true }) => {
   };
 
   const statusConfig = config[status] || config.available;
-  const sizeClass = size === 'sm' ? 'text-xs px-2 py-1' : 'text-sm px-3 py-1.5';
+  const sizeClass = size === 'xs' ? 'text-[8px] px-1 py-0.5' : size === 'sm' ? 'text-xs px-2 py-1' : 'text-sm px-3 py-1.5';
+  const dotClass = size === 'xs' ? 'w-1 h-1' : 'w-2 h-2';
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full font-medium ${statusConfig.bg} ${statusConfig.text} ${sizeClass}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full font-medium ${statusConfig.bg} ${statusConfig.text} ${sizeClass}`}>
       {showIcon && (
-        <span className={`w-2 h-2 rounded-full ${statusConfig.dot}`} />
+        <span className={`rounded-full ${statusConfig.dot} ${dotClass}`} />
       )}
-      {statusConfig.label}
+      {size === 'xs' ? statusConfig.label.charAt(0) : statusConfig.label}
     </span>
   );
 };

@@ -31,7 +31,7 @@ CREATE TABLE mawaid_stock_movements (
 */
 
 import { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from "../../../lib/supabase";
 
 const CATEGORIES = ["Vegetables", "Fruits", "Grains", "Spices", "Dairy", "Meat", "Other"];
 const UNITS = ["kg", "g", "L", "mL", "pcs", "dozen", "bag", "box"];

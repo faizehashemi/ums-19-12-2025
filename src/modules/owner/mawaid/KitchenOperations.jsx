@@ -21,7 +21,7 @@ CREATE TABLE mawaid_ingredient_issues (
 */
 
 import { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from "../../../lib/supabase";
 
 const KitchenOperations = () => {
   const [view, setView] = useState("batches"); // batches, batch_form, issue_ingredients

@@ -11,7 +11,7 @@ CREATE TABLE mawaid_menu_plans (
 */
 
 import { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from "../../../lib/supabase";
 
 const MEAL_TYPES = [
   "breakfast", "lunch", "dinner", "labor_lunch", "labor_dinner",

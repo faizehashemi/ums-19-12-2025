@@ -27,7 +27,7 @@ CREATE INDEX idx_hr_staff_phone ON hr_staff(phone);
 */
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabase';
 
 const StaffDirectory = () => {
   const [staff, setStaff] = useState([]);

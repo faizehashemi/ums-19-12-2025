@@ -1,7 +1,7 @@
 import { Users, Bed, Clock } from 'lucide-react';
 import StatusPill from './StatusPill';
 
-const RoomCard = ({ room, onClick, actions, selectable = false, selected = false, onSelect }) => {
+const RoomCard = ({ room, onClick, actions, selectable = false, selected = false, onSelect, size = 'large' }) => {
   const handleCardClick = (e) => {
     if (selectable && e.target.type !== 'button') {
       onSelect?.();
@@ -10,6 +10,26 @@ const RoomCard = ({ room, onClick, actions, selectable = false, selected = false
     }
   };
 
+  // Compact view - ultra minimal for 20+ cards per row
+  if (size === 'compact') {
+    return (
+      <div
+        onClick={handleCardClick}
+        className={`bg-white border rounded p-1.5 transition-all cursor-pointer text-center ${
+          selected ? 'ring-2 ring-blue-500 border-blue-500' : 'hover:shadow-md hover:border-gray-400'
+        }`}
+        title={`${room.number} - ${room.building}, Floor ${room.floor} - ${room.status}`}
+      >
+        <div className="text-xs font-bold text-gray-900 mb-0.5">{room.number}</div>
+        <StatusPill status={room.status} size="xs" />
+        <div className="text-[9px] text-gray-600 mt-0.5">
+          {room.occupiedBeds}/{room.totalBeds}
+        </div>
+      </div>
+    );
+  }
+
+  // Large view - full-sized cards
   return (
     <div
       onClick={handleCardClick}

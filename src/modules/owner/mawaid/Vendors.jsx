@@ -25,7 +25,7 @@ CREATE TABLE mawaid_vendor_price_lists (
 */
 
 import { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from "../../../lib/supabase";
 
 const Vendors = () => {
   const [view, setView] = useState("list"); // list, form, prices

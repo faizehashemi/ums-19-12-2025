@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PageHeader from '../../../components/layout/PageHeader';
 import SearchInput from '../../../components/accommodation/SearchInput';
 import FilterBar from '../../../components/accommodation/FilterBar';
@@ -9,115 +9,121 @@ import Button from '../../../components/ui/Button';
 import EmptyState from '../../../components/layout/EmptyState';
 import LoadingSkeleton from '../../../components/layout/LoadingSkeleton';
 import RoomDrawer from './components/RoomDrawer';
-import { Plus, Grid3x3, List, Inbox } from 'lucide-react';
+import BuildingModal from '../../../components/accommodation/BuildingModal';
+import RoomModal from '../../../components/accommodation/RoomModal';
+import { Plus, Grid3x3, List, Inbox, Maximize2, Minimize2, Building2, ChevronDown } from 'lucide-react';
 import { useToast } from '../../../components/ui/Toast';
-
-// Mock data - replace with actual API calls
-const mockRooms = [
-  {
-    id: 1,
-    number: '101',
-    building: 'Building A',
-    floor: 1,
-    status: 'occupied',
-    totalBeds: 4,
-    occupiedBeds: 2,
-    lastCleaned: '2h ago',
-    occupants: [
-      { name: 'Ahmed Khan', bed: 'A', checkIn: '2025-12-28' },
-      { name: 'Ali Hassan', bed: 'B', checkIn: '2025-12-28' }
-    ]
-  },
-  {
-    id: 2,
-    number: '102',
-    building: 'Building A',
-    floor: 1,
-    status: 'available',
-    totalBeds: 4,
-    occupiedBeds: 0,
-    lastCleaned: '1h ago',
-    occupants: []
-  },
-  {
-    id: 3,
-    number: '103',
-    building: 'Building A',
-    floor: 1,
-    status: 'cleaning',
-    totalBeds: 4,
-    occupiedBeds: 4,
-    lastCleaned: '5h ago',
-    occupants: [
-      { name: 'Sara Ali', bed: 'A', checkIn: '2025-12-27' },
-      { name: 'Fatima Khan', bed: 'B', checkIn: '2025-12-27' },
-      { name: 'Zainab Ahmed', bed: 'C', checkIn: '2025-12-27' },
-      { name: 'Aisha Hassan', bed: 'D', checkIn: '2025-12-27' }
-    ]
-  },
-  {
-    id: 4,
-    number: '104',
-    building: 'Building A',
-    floor: 1,
-    status: 'maintenance',
-    totalBeds: 2,
-    occupiedBeds: 0,
-    lastCleaned: '1d ago',
-    occupants: [],
-    maintenanceIssues: [
-      { title: 'AC not working', severity: 'High', status: 'Assigned' }
-    ]
-  },
-  {
-    id: 5,
-    number: '201',
-    building: 'Building A',
-    floor: 2,
-    status: 'occupied',
-    totalBeds: 4,
-    occupiedBeds: 3,
-    lastCleaned: '3h ago',
-    occupants: [
-      { name: 'Omar Abdullah', bed: 'A', checkIn: '2025-12-29' },
-      { name: 'Yusuf Ibrahim', bed: 'B', checkIn: '2025-12-29' },
-      { name: 'Bilal Ahmed', bed: 'C', checkIn: '2025-12-29' }
-    ]
-  },
-  {
-    id: 6,
-    number: '101',
-    building: 'Building B',
-    floor: 1,
-    status: 'available',
-    totalBeds: 6,
-    occupiedBeds: 0,
-    lastCleaned: '30m ago',
-    occupants: []
-  }
-];
+import { supabase } from '../../../lib/supabase';
 
 const GridLayout = () => {
   const { showToast } = useToast();
+
+  // State for buildings and rooms
+  const [buildingsList, setBuildingsList] = useState([]);
+  const [roomsList, setRoomsList] = useState([]);
+
+  // Modal states
+  const [buildingModalOpen, setBuildingModalOpen] = useState(false);
+  const [roomModalOpen, setRoomModalOpen] = useState(false);
+  const [editingBuilding, setEditingBuilding] = useState(null);
+  const [editingRoom, setEditingRoom] = useState(null);
+  const [showBuildingMenu, setShowBuildingMenu] = useState(false);
+
+  // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [buildingFilter, setBuildingFilter] = useState('all');
   const [floorFilter, setFloorFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [viewMode, setViewMode] = useState('grid'); // grid or list
+  const [cardSize, setCardSize] = useState('compact'); // compact or large
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Get unique buildings and floors
-  const buildings = useMemo(() => {
-    const unique = [...new Set(mockRooms.map(r => r.building))];
-    return unique.map(b => ({ value: b.toLowerCase().replace(/\s/g, '-'), label: b }));
+  // Fetch buildings and rooms on mount
+  useEffect(() => {
+    fetchBuildingsAndRooms();
   }, []);
+
+  const fetchBuildingsAndRooms = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch buildings
+      const { data: buildings, error: buildingsError } = await supabase
+        .from('buildings')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (buildingsError) throw buildingsError;
+
+      // Fetch rooms with building info
+      const { data: rooms, error: roomsError } = await supabase
+        .from('rooms')
+        .select(`
+          *,
+          buildings (
+            id,
+            name
+          )
+        `)
+        .order('building_id', { ascending: true })
+        .order('floor', { ascending: true })
+        .order('room_number', { ascending: true });
+
+      if (roomsError) throw roomsError;
+
+      // Transform rooms data to match component expectations
+      const transformedRooms = rooms.map(room => ({
+        id: room.id,
+        number: room.room_number,
+        room_number: room.room_number,
+        building_id: room.building_id,
+        building: room.buildings?.name || 'Unknown',
+        floor: room.floor,
+        status: room.status,
+        bed_capacity: room.bed_capacity,
+        totalBeds: room.bed_capacity,
+        room_type: room.room_type,
+        notes: room.notes,
+        lastCleaned: room.last_cleaned_at ? formatTimeAgo(room.last_cleaned_at) : 'Never',
+        occupiedBeds: 0,
+        occupants: []
+      }));
+
+      setBuildingsList(buildings || []);
+      setRoomsList(transformedRooms || []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      showToast('Failed to load buildings and rooms', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatTimeAgo = (timestamp) => {
+    const now = new Date();
+    const past = new Date(timestamp);
+    const diffMs = now - past;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
+  };
+
+  // Get unique buildings and floors from current rooms
+  const buildingsForFilter = useMemo(() => {
+    const unique = [...new Set(roomsList.map(r => r.building))];
+    return unique.map(b => ({ value: b.toLowerCase().replace(/\s/g, '-'), label: b }));
+  }, [roomsList]);
 
   const floors = useMemo(() => {
-    const unique = [...new Set(mockRooms.map(r => r.floor))];
+    const unique = [...new Set(roomsList.map(r => r.floor))];
     return unique.map(f => ({ value: f.toString(), label: `Floor ${f}` }));
-  }, []);
+  }, [roomsList]);
 
   const statusOptions = [
     { value: 'available', label: 'Available' },
@@ -129,7 +135,7 @@ const GridLayout = () => {
 
   // Filter rooms
   const filteredRooms = useMemo(() => {
-    return mockRooms.filter(room => {
+    return roomsList.filter(room => {
       const matchesSearch = room.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           room.building.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesBuilding = buildingFilter === 'all' ||
@@ -139,7 +145,7 @@ const GridLayout = () => {
 
       return matchesSearch && matchesBuilding && matchesFloor && matchesStatus;
     });
-  }, [searchQuery, buildingFilter, floorFilter, statusFilter]);
+  }, [roomsList, searchQuery, buildingFilter, floorFilter, statusFilter]);
 
   // Group by building and floor
   const groupedRooms = useMemo(() => {
@@ -195,6 +201,177 @@ const GridLayout = () => {
     handleRoomAction(action);
   };
 
+  // Building handlers
+  const handleSaveBuilding = async (buildingData) => {
+    try {
+      if (buildingData.id) {
+        // Update existing building
+        const { data, error } = await supabase
+          .from('buildings')
+          .update({
+            name: buildingData.name,
+            address: buildingData.address,
+            total_floors: buildingData.total_floors,
+            description: buildingData.description,
+            status: buildingData.status,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', buildingData.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setBuildingsList(prev => prev.map(b => b.id === buildingData.id ? data : b));
+        showToast(`Building "${buildingData.name}" updated successfully`, 'success');
+      } else {
+        // Add new building
+        const { data, error } = await supabase
+          .from('buildings')
+          .insert([{
+            name: buildingData.name,
+            address: buildingData.address,
+            total_floors: buildingData.total_floors,
+            description: buildingData.description,
+            status: buildingData.status
+          }])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setBuildingsList(prev => [...prev, data]);
+        showToast(`Building "${buildingData.name}" added successfully`, 'success');
+      }
+    } catch (error) {
+      console.error('Error saving building:', error);
+      showToast('Failed to save building', 'error');
+    }
+  };
+
+  const handleDeleteBuilding = async (buildingId) => {
+    const building = buildingsList.find(b => b.id === buildingId);
+    try {
+      const { error } = await supabase
+        .from('buildings')
+        .delete()
+        .eq('id', buildingId);
+
+      if (error) throw error;
+
+      setBuildingsList(prev => prev.filter(b => b.id !== buildingId));
+      // Also remove rooms from UI (cascade delete should handle DB)
+      setRoomsList(prev => prev.filter(r => r.building_id !== buildingId));
+      showToast(`Building "${building.name}" and all its rooms deleted`, 'success');
+    } catch (error) {
+      console.error('Error deleting building:', error);
+      showToast('Failed to delete building', 'error');
+    }
+  };
+
+  const openBuildingModal = (building = null) => {
+    setEditingBuilding(building);
+    setBuildingModalOpen(true);
+  };
+
+  // Room handlers
+  const handleSaveRoom = async (roomsData) => {
+    try {
+      // roomsData is an array (for bulk creation or single room)
+      if (roomsData[0].id) {
+        // Update existing room
+        const roomData = roomsData[0];
+        const { data, error } = await supabase
+          .from('rooms')
+          .update({
+            room_number: roomData.room_number,
+            floor: roomData.floor,
+            bed_capacity: roomData.bed_capacity,
+            status: roomData.status,
+            room_type: roomData.room_type,
+            notes: roomData.notes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', roomData.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setRoomsList(prev => prev.map(r => r.id === roomData.id ? {
+          ...data,
+          number: data.room_number,
+          building: buildingsList.find(b => b.id === data.building_id)?.name || '',
+          totalBeds: data.bed_capacity,
+          occupiedBeds: r.occupiedBeds || 0,
+          occupants: r.occupants || []
+        } : r));
+        showToast(`Room ${roomData.room_number} updated successfully`, 'success');
+      } else {
+        // Add new room(s)
+        const roomsToInsert = roomsData.map(room => ({
+          building_id: room.building_id,
+          room_number: room.room_number,
+          floor: room.floor,
+          bed_capacity: room.bed_capacity,
+          status: room.status,
+          room_type: room.room_type,
+          notes: room.notes
+        }));
+
+        const { data, error } = await supabase
+          .from('rooms')
+          .insert(roomsToInsert)
+          .select();
+
+        if (error) throw error;
+
+        const newRooms = data.map(room => ({
+          ...room,
+          number: room.room_number,
+          building: buildingsList.find(b => b.id === room.building_id)?.name || '',
+          totalBeds: room.bed_capacity,
+          occupiedBeds: 0,
+          occupants: []
+        }));
+
+        setRoomsList(prev => [...prev, ...newRooms]);
+        showToast(
+          newRooms.length === 1
+            ? `Room ${newRooms[0].room_number} added successfully`
+            : `${newRooms.length} rooms added successfully`,
+          'success'
+        );
+      }
+    } catch (error) {
+      console.error('Error saving room:', error);
+      showToast('Failed to save room', 'error');
+    }
+  };
+
+  const handleDeleteRoom = async (roomId) => {
+    const room = roomsList.find(r => r.id === roomId);
+    try {
+      const { error } = await supabase
+        .from('rooms')
+        .delete()
+        .eq('id', roomId);
+
+      if (error) throw error;
+
+      setRoomsList(prev => prev.filter(r => r.id !== roomId));
+      showToast(`Room ${room.number} deleted`, 'success');
+    } catch (error) {
+      console.error('Error deleting room:', error);
+      showToast('Failed to delete room', 'error');
+    }
+  };
+
+  const openRoomModal = (room = null) => {
+    setEditingRoom(room);
+    setRoomModalOpen(true);
+  };
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -218,7 +395,76 @@ const GridLayout = () => {
                 <List className="w-4 h-4" />
               </button>
             </div>
-            <Button variant="primary" icon={<Plus className="w-5 h-5" />}>
+            {viewMode === 'grid' && (
+              <div className="hidden md:flex gap-1 border border-gray-300 rounded-lg p-1">
+                <button
+                  onClick={() => setCardSize('compact')}
+                  className={`p-2 rounded ${cardSize === 'compact' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'}`}
+                  aria-label="Compact size"
+                  title="Compact (20+ per row)"
+                >
+                  <Minimize2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setCardSize('large')}
+                  className={`p-2 rounded ${cardSize === 'large' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'}`}
+                  aria-label="Large size"
+                  title="Large"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Building Management Dropdown */}
+            <div className="relative">
+              <Button
+                variant="secondary"
+                icon={<Building2 className="w-5 h-5" />}
+                onClick={() => setShowBuildingMenu(!showBuildingMenu)}
+              >
+                Buildings
+                <ChevronDown className="w-4 h-4 ml-1" />
+              </Button>
+              {showBuildingMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowBuildingMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                    <button
+                      onClick={() => {
+                        openBuildingModal();
+                        setShowBuildingMenu(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Building
+                    </button>
+                    {buildingsList.map(building => (
+                      <button
+                        key={building.id}
+                        onClick={() => {
+                          openBuildingModal(building);
+                          setShowBuildingMenu(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+                      >
+                        {building.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <Button
+              variant="primary"
+              icon={<Plus className="w-5 h-5" />}
+              onClick={() => openRoomModal()}
+            >
               Add Room
             </Button>
           </>
@@ -238,7 +484,7 @@ const GridLayout = () => {
           <FilterBar.Dropdown
             label="Building"
             value={buildingFilter}
-            options={buildings}
+            options={buildingsForFilter}
             onChange={setBuildingFilter}
           />
           <FilterBar.Dropdown
@@ -287,45 +533,50 @@ const GridLayout = () => {
                       <h3 className="text-sm font-semibold text-gray-700 mb-2">
                         Floor {floor}
                       </h3>
-                      <div className={`grid gap-3 ${
+                      <div className={`grid ${
                         viewMode === 'grid'
-                          ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-                          : 'grid-cols-1'
+                          ? cardSize === 'compact'
+                            ? 'grid-cols-6 sm:grid-cols-12 md:grid-cols-16 lg:grid-cols-20 xl:grid-cols-24 gap-1.5'
+                            : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3'
+                          : 'grid-cols-1 gap-3'
                       }`}>
                         {rooms.map(room => (
                           <RoomCard
                             key={room.id}
                             room={room}
+                            size={cardSize}
                             onClick={() => openRoomDrawer(room)}
                             actions={
-                              <QuickActions>
-                                <QuickActions.Button
-                                  icon="user"
-                                  label="Assign"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleQuickAction(room, 'assign');
-                                  }}
-                                />
-                                <QuickActions.Button
-                                  icon="broom"
-                                  label="Clean"
-                                  variant="success"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleQuickAction(room, 'clean');
-                                  }}
-                                />
-                                <QuickActions.Button
-                                  icon="wrench"
-                                  label="Issue"
-                                  variant="danger"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleQuickAction(room, 'maintenance');
-                                  }}
-                                />
-                              </QuickActions>
+                              cardSize !== 'compact' && (
+                                <QuickActions>
+                                  <QuickActions.Button
+                                    icon="user"
+                                    label="Assign"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleQuickAction(room, 'assign');
+                                    }}
+                                  />
+                                  <QuickActions.Button
+                                    icon="broom"
+                                    label="Clean"
+                                    variant="success"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleQuickAction(room, 'clean');
+                                    }}
+                                  />
+                                  <QuickActions.Button
+                                    icon="wrench"
+                                    label="Issue"
+                                    variant="danger"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleQuickAction(room, 'maintenance');
+                                    }}
+                                  />
+                                </QuickActions>
+                              )
                             }
                           />
                         ))}
@@ -345,6 +596,31 @@ const GridLayout = () => {
         onClose={() => setDrawerOpen(false)}
         room={selectedRoom}
         onAction={handleRoomAction}
+      />
+
+      {/* Building Modal */}
+      <BuildingModal
+        isOpen={buildingModalOpen}
+        onClose={() => {
+          setBuildingModalOpen(false);
+          setEditingBuilding(null);
+        }}
+        building={editingBuilding}
+        onSave={handleSaveBuilding}
+        onDelete={handleDeleteBuilding}
+      />
+
+      {/* Room Modal */}
+      <RoomModal
+        isOpen={roomModalOpen}
+        onClose={() => {
+          setRoomModalOpen(false);
+          setEditingRoom(null);
+        }}
+        room={editingRoom}
+        buildings={buildingsList}
+        onSave={handleSaveRoom}
+        onDelete={handleDeleteRoom}
       />
     </div>
   );

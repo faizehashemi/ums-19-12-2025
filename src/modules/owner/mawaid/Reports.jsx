@@ -5,7 +5,7 @@
 */
 
 import { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from "../../../lib/supabase";
 
 const MawaidReports = () => {
   const [reportType, setReportType] = useState("daily_summary"); // daily_summary, stock_status, vendor_purchases, production_summary

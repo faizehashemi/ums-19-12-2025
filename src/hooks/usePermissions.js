@@ -1,4 +1,4 @@
-import { useUser } from '@clerk/clerk-react';
+import { useAuth } from '../contexts/AuthContext';
 import {
   getUserPermissions,
   canAccessModule,
@@ -12,20 +12,20 @@ import {
  * Hook to get all user permissions
  */
 export function usePermissions() {
-  const { user, isLoaded } = useUser();
+  const { profile, isLoaded } = useAuth();
 
-  const permissions = user ? getUserPermissions(user) : null;
-  const userRole = user?.publicMetadata?.role || null;
+  const permissions = profile ? getUserPermissions(profile) : null;
+  const userRole = profile?.role || null;
 
   return {
     permissions,
     role: userRole,
     isLoaded,
-    canAccessModule: (moduleKey, action = 'read') => canAccessModule(user, moduleKey, action),
-    canAccessRoute: (routePath, action = 'read') => canAccessRoute(user, routePath, action),
-    hasRole: (roleOrRoles) => hasRole(user, roleOrRoles),
-    isAdmin: () => isAdmin(user),
-    canManageUsers: () => canManageUsers(user)
+    canAccessModule: (moduleKey, action = 'read') => canAccessModule(profile, moduleKey, action),
+    canAccessRoute: (routePath, action = 'read') => canAccessRoute(profile, routePath, action),
+    hasRole: (roleOrRoles) => hasRole(profile, roleOrRoles),
+    isAdmin: () => isAdmin(profile),
+    canManageUsers: () => canManageUsers(profile)
   };
 }
 
@@ -33,14 +33,14 @@ export function usePermissions() {
  * Hook to check if user has a specific role
  */
 export function useHasRole(roleOrRoles) {
-  const { user } = useUser();
-  return hasRole(user, roleOrRoles);
+  const { profile } = useAuth();
+  return hasRole(profile, roleOrRoles);
 }
 
 /**
  * Hook to check module access
  */
 export function useCanAccessModule(moduleKey, action = 'read') {
-  const { user } = useUser();
-  return canAccessModule(user, moduleKey, action);
+  const { profile } = useAuth();
+  return canAccessModule(profile, moduleKey, action);
 }

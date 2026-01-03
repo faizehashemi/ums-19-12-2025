@@ -1,62 +1,147 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PageHeader from '../../../components/layout/PageHeader';
 import FilterBar from '../../../components/accommodation/FilterBar';
-import StatusPill from '../../../components/accommodation/StatusPill';
 import Button from '../../../components/ui/Button';
-import Modal from '../../../components/ui/Modal';
-import Input from '../../../components/ui/Input';
-import { Plus, Users, Clock } from 'lucide-react';
+import EmptyState from '../../../components/layout/EmptyState';
+import { CheckCircle, Building, AlertCircle } from 'lucide-react';
 import { useToast } from '../../../components/ui/Toast';
-
-const mockTasks = [
-  { id: 1, room: '101', type: 'Deep Clean', assignedTo: 'Fatima', dueTime: '2:00 PM', status: 'open', priority: 'normal' },
-  { id: 2, room: '102', type: 'Standard', assignedTo: null, dueTime: '3:00 PM', status: 'open', priority: 'urgent' },
-  { id: 3, room: '103', type: 'Standard', assignedTo: 'Aisha', dueTime: '1:00 PM', status: 'in_progress', priority: 'normal' },
-  { id: 4, room: '104', type: 'Linen Change', assignedTo: 'Fatima', dueTime: '4:00 PM', status: 'assigned', priority: 'normal' },
-  { id: 5, room: '105', type: 'Standard', assignedTo: 'Aisha', dueTime: '11:00 AM', status: 'done', priority: 'normal' },
-];
+import { supabase } from '../../../lib/supabase';
 
 const Housekeeping = () => {
   const { showToast } = useToast();
   const [statusFilter, setStatusFilter] = useState('all');
-  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [rooms, setRooms] = useState([]);
+  const [buildings, setBuildings] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredTasks = useMemo(() => {
-    if (statusFilter === 'all') return mockTasks;
-    return mockTasks.filter(t => t.status === statusFilter);
-  }, [statusFilter]);
-
-  const tasksByStatus = useMemo(() => {
-    return {
-      open: mockTasks.filter(t => t.status === 'open'),
-      assigned: mockTasks.filter(t => t.status === 'assigned'),
-      in_progress: mockTasks.filter(t => t.status === 'in_progress'),
-      done: mockTasks.filter(t => t.status === 'done')
-    };
+  useEffect(() => {
+    fetchRooms();
   }, []);
 
-  const TaskCard = ({ task }) => (
-    <div className={`bg-white border rounded-lg p-3 ${task.priority === 'urgent' ? 'border-red-500' : ''}`}>
-      <div className="flex items-start justify-between mb-2">
+  const fetchRooms = async () => {
+    setLoading(true);
+    try {
+      const { data: roomsData, error: roomsError } = await supabase
+        .from('rooms')
+        .select(`
+          *,
+          buildings (
+            id,
+            name
+          )
+        `)
+        .order('building_id', { ascending: true })
+        .order('floor', { ascending: true })
+        .order('room_number', { ascending: true });
+
+      if (roomsError) throw roomsError;
+
+      const transformedRooms = roomsData.map(room => ({
+        id: room.id,
+        room_number: room.room_number,
+        building: room.buildings?.name || 'Unknown',
+        building_id: room.building_id,
+        floor: room.floor,
+        status: room.status,
+        last_cleaned_at: room.last_cleaned_at,
+        updated_at: room.updated_at
+      }));
+
+      setRooms(transformedRooms || []);
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
+      showToast('Failed to load rooms', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredRooms = useMemo(() => {
+    if (statusFilter === 'all') return rooms;
+    return rooms.filter(r => r.status === statusFilter);
+  }, [rooms, statusFilter]);
+
+  const roomsByStatus = useMemo(() => {
+    return {
+      cleaning: rooms.filter(r => r.status === 'cleaning'),
+      available: rooms.filter(r => r.status === 'available'),
+      occupied: rooms.filter(r => r.status === 'occupied'),
+      maintenance: rooms.filter(r => r.status === 'maintenance')
+    };
+  }, [rooms]);
+
+  const handleCompleteCleaning = async (roomId) => {
+    try {
+      // Call the complete_room_cleaning function
+      const { error } = await supabase.rpc('complete_room_cleaning', {
+        room_uuid: roomId
+      });
+
+      if (error) throw error;
+
+      showToast('Room cleaning completed successfully', 'success');
+      fetchRooms(); // Refresh the list
+    } catch (error) {
+      console.error('Error completing cleaning:', error);
+      showToast('Failed to complete cleaning', 'error');
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'cleaning':
+        return 'bg-yellow-50 border-yellow-400 text-yellow-700';
+      case 'available':
+        return 'bg-green-50 border-green-400 text-green-700';
+      case 'occupied':
+        return 'bg-blue-50 border-blue-400 text-blue-700';
+      case 'maintenance':
+        return 'bg-red-50 border-red-400 text-red-700';
+      default:
+        return 'bg-gray-50 border-gray-400 text-gray-700';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'cleaning':
+        return <AlertCircle className="w-3 h-3" />;
+      case 'available':
+        return <CheckCircle className="w-3 h-3" />;
+      default:
+        return <Building className="w-3 h-3" />;
+    }
+  };
+
+  const RoomCard = ({ room }) => (
+    <div className={`border rounded-md p-2 ${getStatusColor(room.status)}`}>
+      <div className="flex items-start justify-between mb-1">
         <div>
-          <h3 className="font-semibold text-sm">Room {task.room}</h3>
-          <p className="text-xs text-gray-600">{task.type}</p>
+          <h3 className="font-medium text-xs">Room {room.room_number}</h3>
+          <p className="text-[11px] opacity-75">{room.building}</p>
         </div>
-        {task.priority === 'urgent' && (
-          <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full">Urgent</span>
+        {getStatusIcon(room.status)}
+      </div>
+
+      {room.last_cleaned_at && (
+        <p className="text-[11px] opacity-75 mb-1">
+          Last cleaned: {new Date(room.last_cleaned_at).toLocaleDateString()}
+        </p>
+      )}
+
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium capitalize">{room.status.replace('_', ' ')}</span>
+        {room.status === 'cleaning' && (
+          <Button
+            variant="primary"
+            size="sm"
+            className="px-2 py-1 text-xs h-8"
+            onClick={() => handleCompleteCleaning(room.id)}
+          >
+            Mark Clean
+          </Button>
         )}
       </div>
-      <div className="flex items-center gap-1 text-xs text-gray-600 mb-2">
-        <Clock className="w-3 h-3" />
-        {task.dueTime}
-      </div>
-      {task.assignedTo && (
-        <div className="text-xs text-gray-700 mb-2">
-          <Users className="w-3 h-3 inline mr-1" />
-          {task.assignedTo}
-        </div>
-      )}
-      <StatusPill status={task.status} size="sm" />
     </div>
   );
 
@@ -64,86 +149,77 @@ const Housekeeping = () => {
     <div className="space-y-4">
       <PageHeader
         title="Housekeeping"
-        subtitle={`${tasksByStatus.open.length} open tasks`}
-        actions={
-          <Button variant="primary" icon={<Plus className="w-5 h-5" />} onClick={() => setCreateModalOpen(true)}>
-            New Task
-          </Button>
-        }
+        subtitle={`${roomsByStatus.cleaning.length} rooms need cleaning`}
       />
 
       <FilterBar>
         <FilterBar.Chips
-          options={['All', 'Open', 'Assigned', 'In Progress', 'Done']}
+          options={['All', 'Cleaning', 'Available', 'Occupied', 'Maintenance']}
           active={statusFilter}
           onChange={setStatusFilter}
         />
       </FilterBar>
 
-      {/* Desktop: Kanban */}
+      {/* Desktop: Kanban Board */}
       <div className="hidden md:grid md:grid-cols-4 gap-4">
-        {['open', 'assigned', 'in_progress', 'done'].map(status => (
-          <div key={status} className="bg-gray-50 rounded-lg p-3">
-            <h3 className="font-semibold text-sm mb-3 capitalize">
-              {status.replace('_', ' ')} ({tasksByStatus[status].length})
+        {['cleaning', 'available', 'occupied', 'maintenance'].map(status => (
+          <div key={status} className="bg-gray-50 rounded-lg p-2">
+            <h3 className="font-semibold text-xs mb-2 capitalize">
+              {status} ({roomsByStatus[status].length})
             </h3>
             <div className="space-y-2">
-              {tasksByStatus[status].map(task => (
-                <TaskCard key={task.id} task={task} />
+              {roomsByStatus[status].map(room => (
+                <RoomCard key={room.id} room={room} />
               ))}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Mobile: List */}
+      {/* Mobile: List View */}
       <div className="md:hidden space-y-3">
-        {filteredTasks.map(task => (
-          <div key={task.id} className="bg-white border rounded-lg p-4">
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <h3 className="font-semibold">Room {task.room}</h3>
-                <p className="text-sm text-gray-600">{task.type}</p>
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : filteredRooms.length === 0 ? (
+          <EmptyState
+            icon={<Building className="w-8 h-8" />}
+            title="No rooms found"
+            description="No rooms match the selected filter"
+          />
+        ) : (
+          filteredRooms.map(room => (
+            <div key={room.id} className={`border rounded-md p-2 ${getStatusColor(room.status)}`}>
+              <div className="flex items-start justify-between mb-1">
+                <div>
+                  <h3 className="font-medium text-sm">Room {room.room_number}</h3>
+                  <p className="text-[11px] opacity-75">{room.building}</p>
+                </div>
+                {getStatusIcon(room.status)}
               </div>
-              <StatusPill status={task.status} />
-            </div>
-            <div className="flex items-center gap-3 text-sm text-gray-600">
-              <span className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                {task.dueTime}
-              </span>
-              {task.assignedTo && (
-                <span className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
-                  {task.assignedTo}
-                </span>
+              {room.last_cleaned_at && (
+                <p className="text-[11px] opacity-75 mb-1">
+                  Last cleaned: {new Date(room.last_cleaned_at).toLocaleDateString()}
+                </p>
               )}
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-sm font-medium capitalize">{room.status.replace('_', ' ')}</span>
+                {room.status === 'cleaning' && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="px-2 py-1 text-xs h-8"
+                    onClick={() => handleCompleteCleaning(room.id)}
+                  >
+                    Mark Clean
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
-
-      {/* Create Task Modal */}
-      <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create Task">
-        <Modal.Content>
-          <div className="space-y-4">
-            <Input label="Room Number" placeholder="101" required />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Task Type</label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option>Standard</option>
-                <option>Deep Clean</option>
-                <option>Linen Change</option>
-              </select>
-            </div>
-            <Input label="Due Time" type="time" required />
-          </div>
-        </Modal.Content>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setCreateModalOpen(false)}>Cancel</Button>
-          <Button variant="primary" onClick={() => { setCreateModalOpen(false); showToast('Task created', 'success'); }}>Create</Button>
-        </Modal.Footer>
-      </Modal>
     </div>
   );
 };

@@ -30,7 +30,7 @@ CREATE INDEX idx_hr_roster_status ON hr_roster(status);
 */
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabase';
 
 const Scheduling = () => {
   const [rosters, setRosters] = useState([]);

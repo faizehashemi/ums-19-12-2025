@@ -1,21 +1,73 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Title from "../../components/Title";
 import { assets } from "../../assets/assets";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "../../lib/supabase";
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [reservations, setReservations] = useState([]);
   const [errorMsg, setErrorMsg] = useState("");
 
+  const isInMakkah = (travelDetails) => {
+    if (!travelDetails) return false;
+    
+    try {
+      const now = new Date();
+      
+      const arrival = travelDetails.arrivalDateTime ? new Date(travelDetails.arrivalDateTime) : null;
+      const departure = travelDetails.departureDateTime ? new Date(travelDetails.departureDateTime) : null;
+      
+      // These are date strings (YYYY-MM-DD), so adding time might be needed for precise comparison, 
+      // or we just compare dates. `new Date("YYYY-MM-DD")` is usually UTC midnight.
+      // To be safe for "current day", checking ranges is key.
+      const toMadina = travelDetails.travelMadinaDate ? new Date(travelDetails.travelMadinaDate) : null;
+      const fromMadina = travelDetails.makkahMadinaDate ? new Date(travelDetails.makkahMadinaDate) : null;
+
+      if (!arrival) return false;
+
+      // Check Makkah stay duration
+      
+      // Case 1: Makkah First (Arrival -> Makkah -> Madina)
+      // Presence in Makkah is from Arrival until travel to Madina.
+      if (toMadina) {
+        // Adjust toMadina to end of day? Or start of day?
+        // Usually checkout is by noon.
+        // Let's assume inclusive of the date until travel?
+        return now >= arrival && now < toMadina;
+      }
+
+      // Case 2: Madina First (Arrival -> Madina -> Makkah)
+      // Presence in Makkah is from travel FROM Madina TO Makkah, until Departure.
+      if (fromMadina) {
+        if (!departure) return now >= fromMadina; // If no departure, assume currently there if after start
+        return now >= fromMadina && now <= departure;
+      }
+
+      // Case 3: Only Makkah (No inter-city travel dates)
+      // Presence is entire trip (Arrival -> Departure)
+      if (departure) {
+        return now >= arrival && now <= departure;
+      }
+      
+      return false;
+    } catch (e) {
+      console.error("Date parsing error", e);
+      return false;
+    }
+  };
+
   const totals = useMemo(() => {
-    const totalBookings = reservations.length;
+    // Check for "In Makkah" status
+    const inMakkahCount = reservations.filter(r => {
+      // Exclude cancelled/rejected?
+      const status = (r.status || "").toLowerCase();
+      if (['cancelled', 'rejected'].includes(status)) return false;
+      return isInMakkah(r.travel_details);
+    }).length;
 
-    // If you later add price fields (or link to rooms), compute revenue here.
-    // Example: reservations.reduce((sum, r) => sum + (r.total_amount || 0), 0)
-    const totalRevenue = 0;
+    const totalRevenue = reservations.reduce((sum, r) => sum + (r.total_fee || 0), 0);
 
-    return { totalBookings, totalRevenue };
+    return { inMakkahCount, totalRevenue };
   }, [reservations]);
 
   const fetchReservations = async () => {
@@ -23,16 +75,34 @@ const Dashboard = () => {
     setErrorMsg("");
 
     try {
+      // Fetch from 'reservations' table instead of 'trip_reservations'
       const { data, error } = await supabase
-        .from("trip_reservations")
+        .from("reservations")
         .select(
-          "id, created_at, status, trip_type, pax, guest_name, guest_phone, guest_email"
+          "id, created_at, status, accommodation, num_members, members, travel_details, total_fee"
         )
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      setReservations(data || []);
+      // Transform data to match previous structure for the table if needed, 
+      // or just accept the new structure.
+      // We need to map extracted fields for the table display.
+      const transformed = (data || []).map(r => {
+        const members = Array.isArray(r.members) ? r.members : [];
+        const mainGuest = members[0] || {};
+        
+        return {
+          ...r,
+          guest_name: mainGuest.name || "—",
+          guest_phone: mainGuest.phone || mainGuest.mobile_no || "—",
+          guest_email: mainGuest.email || "—",
+          trip_type: r.accommodation, // 'Sharing' or 'Exclusive'
+          pax: r.num_members
+        };
+      });
+
+      setReservations(transformed);
     } catch (err) {
       console.error(err);
       setErrorMsg(err?.message || "Failed to load reservations");
@@ -55,7 +125,7 @@ const Dashboard = () => {
       />
 
       <div className="flex gap-4 my-8 flex-wrap">
-        {/* Total Bookings */}
+        {/* In Makkah Count */}
         <div className="bg-primary/3 border border-primary/10 rounded flex p-4 pr-8">
           <img
             src={assets.totalBookingIcon}
@@ -63,9 +133,9 @@ const Dashboard = () => {
             className="max-sm:hidden h-10"
           />
           <div className="flex flex-col sm:ml-4 font-medium">
-            <p className="text-blue-500 text-lg">Total Bookings</p>
+            <p className="text-blue-500 text-lg">In Makkah</p>
             <p className="text-neutral-400 text-base">
-              {loading ? "..." : totals.totalBookings}
+              {loading ? "..." : totals.inMakkahCount}
             </p>
           </div>
         </div>
@@ -80,7 +150,7 @@ const Dashboard = () => {
           <div className="flex flex-col sm:ml-4 font-medium">
             <p className="text-blue-500 text-lg">Total Revenue</p>
             <p className="text-neutral-400 text-base">
-              {loading ? "..." : `$ ${totals.totalRevenue}`}
+              {loading ? "..." : `$ ${totals.totalRevenue.toLocaleString()}`}
             </p>
           </div>
         </div>
@@ -154,12 +224,12 @@ const Dashboard = () => {
                 const status = (r.status || "new").toLowerCase();
 
                 const badgeClass =
-                  status === "confirmed"
+                  status === "confirmed" || status === "approved"
                     ? "bg-green-200 text-green-700"
-                    : status === "cancelled"
+                    : status === "cancelled" || status === "rejected"
                     ? "bg-red-200 text-red-700"
-                    : status === "reviewing"
-                    ? "bg-blue-200 text-blue-700"
+                    : status === "completed"
+                    ? "bg-gray-200 text-gray-700"
                     : "bg-amber-200 text-amber-700";
 
                 const created = r.created_at
@@ -171,7 +241,7 @@ const Dashboard = () => {
                     <td className="py-3 px-4 text-gray-700 border-t border-gray-300">
                       <div className="flex flex-col">
                         <span className="font-medium">
-                          {r.guest_name || "—"}
+                          {r.guest_name}
                         </span>
                         <span className="text-xs text-gray-400">
                           {r.guest_phone || ""}

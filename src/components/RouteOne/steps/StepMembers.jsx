@@ -253,7 +253,7 @@ export default function StepMembers({
       >
         <Modal.Content>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="ITS No. *">
+            <Field label="ITS No.">
               <input
                 type="text"
                 value={formData.itsNo || ""}
@@ -262,7 +262,7 @@ export default function StepMembers({
               />
             </Field>
 
-            <Field label="Name *">
+            <Field label="Name">
               <input
                 type="text"
                 value={formData.name || ""}
@@ -271,7 +271,7 @@ export default function StepMembers({
               />
             </Field>
 
-            <Field label="Phone *">
+            <Field label="Phone">
               <input
                 type="tel"
                 value={formData.phone || ""}
@@ -280,7 +280,7 @@ export default function StepMembers({
               />
             </Field>
 
-            <Field label="Email *">
+            <Field label="Email">
               <input
                 type="email"
                 value={formData.email || ""}
@@ -289,7 +289,7 @@ export default function StepMembers({
               />
             </Field>
 
-            <Field label="Visa Type *">
+            <Field label="Visa Type">
               <select
                 value={formData.visaType || ""}
                 onChange={(e) => handleFormChange("visaType", e.target.value)}
@@ -302,7 +302,7 @@ export default function StepMembers({
               </select>
             </Field>
 
-            <Field label="Passport Name *">
+            <Field label="Passport Name">
               <input
                 type="text"
                 value={formData.passportName || ""}
@@ -311,7 +311,7 @@ export default function StepMembers({
               />
             </Field>
 
-            <Field label="Passport Number *">
+            <Field label="Passport Number">
               <input
                 type="text"
                 value={formData.passportNumber || ""}
@@ -320,7 +320,7 @@ export default function StepMembers({
               />
             </Field>
 
-            <Field label="Date of Birth *">
+            <Field label="Date of Birth">
               <input
                 type="date"
                 value={formData.dateOfBirth || ""}

@@ -21,7 +21,7 @@ CREATE TABLE mawaid_thal_logs (
 */
 
 import { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from "../../../lib/supabase";
 
 const MEAL_TYPES = [
   "breakfast", "lunch", "dinner", "labor_lunch", "labor_dinner",
@@ -44,6 +44,12 @@ const DiningHall = () => {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [newSiteName, setNewSiteName] = useState("");
+  const [newSiteBuilding, setNewSiteBuilding] = useState("");
+  const [newSiteCapacity, setNewSiteCapacity] = useState("");
 
   useEffect(() => {
     loadSites();
@@ -214,11 +220,52 @@ const DiningHall = () => {
     setLoading(false);
   };
 
+  const handleAddSite = async () => {
+    if (!newSiteName || !newSiteBuilding || !newSiteCapacity) {
+      setError("All fields are required");
+      return;
+    }
+
+    const capacity = parseInt(newSiteCapacity);
+    if (isNaN(capacity) || capacity <= 0) {
+      setError("Invalid capacity value");
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase
+      .from("mawaid_sites")
+      .insert({
+        name: newSiteName,
+        building: newSiteBuilding,
+        capacity_thals: capacity,
+        is_active: true
+      });
+
+    if (error) {
+      setError(`RLS blocked action: ${error.message}`);
+    } else {
+      setError("");
+      setShowModal(false);
+      setNewSiteName("");
+      setNewSiteBuilding("");
+      setNewSiteCapacity("");
+      loadSites();
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="p-4 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Dining Hall</h1>
         <div className="flex gap-2">
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-3 py-1 rounded text-sm bg-green-600 text-white hover:bg-green-700"
+          >
+            + Add Site
+          </button>
           <button
             onClick={() => setView("sessions")}
             className={`px-3 py-1 rounded text-sm ${view === "sessions" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
@@ -428,6 +475,73 @@ const DiningHall = () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Add Site Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold mb-4">Add New Site</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Site Name *</label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  value={newSiteName}
+                  onChange={(e) => setNewSiteName(e.target.value)}
+                  placeholder="e.g., Main Dining Hall"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Site Building *</label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  value={newSiteBuilding}
+                  onChange={(e) => setNewSiteBuilding(e.target.value)}
+                  placeholder="e.g., Building A"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Site Capacity of Thals *</label>
+                <input
+                  type="number"
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  value={newSiteCapacity}
+                  onChange={(e) => setNewSiteCapacity(e.target.value)}
+                  placeholder="e.g., 500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setNewSiteName("");
+                  setNewSiteBuilding("");
+                  setNewSiteCapacity("");
+                  setError("");
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSite}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300"
+              >
+                {loading ? "Adding..." : "Add Site"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

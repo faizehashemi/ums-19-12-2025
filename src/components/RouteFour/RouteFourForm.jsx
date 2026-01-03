@@ -7,8 +7,10 @@ import StepAccommodation from "./steps/StepAccommodation";
 import StepFees from "./steps/StepFees";
 import StepReview from "./steps/StepReview";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function RouteFourForm() {
+  const { user } = useAuth();
   const steps = ["Travel", "Members", "Documents", "Accommodation", "Fees", "Review"];
   const totalPages = steps.length;
 
@@ -243,6 +245,7 @@ export default function RouteFourForm() {
         .from('reservations')
         .insert([
           {
+            user_id: user?.id,
             travel_details: travelDetails,
             members: members.map((m) => ({
               ...memberData[m.id],

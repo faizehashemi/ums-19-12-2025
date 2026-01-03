@@ -1,37 +1,91 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PageHeader from '../../../components/layout/PageHeader';
-import Tabs from '../../../components/ui/Tabs';
 import SearchInput from '../../../components/accommodation/SearchInput';
-import DateRangePicker from '../../../components/accommodation/DateRangePicker';
 import Button from '../../../components/ui/Button';
-import Modal from '../../../components/ui/Modal';
 import EmptyState from '../../../components/layout/EmptyState';
+import RoomAllocationModal from './components/RoomAllocationModal';
 import { Download, Users, CheckCircle, Clock } from 'lucide-react';
 import { useToast } from '../../../components/ui/Toast';
-
-// Mock data
-const mockCheckins = [
-  { id: 1, name: 'Ahmed Khan', room: '101', bed: 'A', time: '10:00 AM', reservationId: '#12345', status: 'pending' },
-  { id: 2, name: 'Sara Ali', room: '102', bed: 'B', time: '11:30 AM', reservationId: '#12346', status: 'pending' },
-  { id: 3, name: 'Omar Abdullah', room: '103', bed: 'A', time: '02:00 PM', reservationId: '#12347', status: 'completed' },
-];
-
-const mockCheckouts = [
-  { id: 1, name: 'Fatima Hassan', room: '201', bed: 'A', time: '09:00 AM', checkoutDate: '2025-12-30', status: 'pending' },
-  { id: 2, name: 'Ali Ahmed', room: '202', bed: 'B', time: '10:00 AM', checkoutDate: '2025-12-30', status: 'pending' },
-];
+import { supabase } from '../../../lib/supabase';
 
 const CheckinsCheckouts = () => {
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState('checkin');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDate, setSelectedDate] = useState('2025-12-30');
-  const [checkinModalOpen, setCheckinModalOpen] = useState(false);
-  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
-  const [selectedGuest, setSelectedGuest] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [reservations, setReservations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [allocationModalOpen, setAllocationModalOpen] = useState(false);
+  const [selectedReservation, setSelectedReservation] = useState(null);
 
-  const currentData = activeTab === 'checkin' ? mockCheckins : mockCheckouts;
+  // Fetch reservations from Supabase
+  useEffect(() => {
+    fetchReservations();
+  }, [selectedDate]);
+
+  const fetchReservations = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('reservations')
+        .select('*')
+        .in('status', ['approved', 'confirmed'])
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setReservations(data || []);
+    } catch (error) {
+      console.error('Error fetching reservations:', error);
+      showToast('Failed to load reservations', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Transform reservations to checkin format (one card per group)
+  const transformedData = useMemo(() => {
+    if (!reservations.length) return [];
+
+    return reservations.map(reservation => {
+      const members = reservation.members || [];
+      const travelDetails = reservation.travel_details || {};
+      const firstMember = members[0] || {};
+
+      // Determine overall group check-in status
+      const allCheckedIn = members.every(m => m.checkin_status === 'completed');
+      const groupStatus = allCheckedIn ? 'completed' : 'pending';
+
+      // Extract arrival info
+      const arrivalDate = travelDetails.arrivalDateTime
+        ? travelDetails.arrivalDateTime.split('T')[0]
+        : null;
+      const arrivalTime = travelDetails.arrivalDateTime
+        ? new Date(travelDetails.arrivalDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        : '12:00 PM';
+
+      return {
+        id: reservation.id,
+        reservationId: reservation.sh_id ? `#${reservation.sh_id}` : `#${reservation.id.substring(0, 8)}`,
+        name: firstMember.name || 'N/A',
+        memberCount: members.length,
+        room: firstMember.room || 'TBD',
+        bed: firstMember.bed || 'TBD',
+        time: arrivalTime,
+        arrivalDate: arrivalDate,
+        status: groupStatus,
+        originalReservation: reservation,
+        members: members
+      };
+    });
+  }, [reservations, selectedDate]);
+
+  // Filter based on check-in date
+  const currentData = useMemo(() => {
+    return transformedData.filter(item => {
+      // Show only items for selected arrival date
+      return item.arrivalDate === selectedDate;
+    });
+  }, [transformedData, selectedDate]);
 
   const filteredData = useMemo(() => {
     return currentData.filter(item =>
@@ -44,83 +98,83 @@ const CheckinsCheckouts = () => {
   const pendingCount = filteredData.filter(item => item.status === 'pending').length;
 
   const handleCheckin = (guest) => {
-    setSelectedGuest(guest);
-    setCheckinModalOpen(true);
+    // Open room allocation modal for check-in
+    setSelectedReservation(guest.originalReservation);
+    setAllocationModalOpen(true);
   };
 
-  const handleCheckout = (guest) => {
-    setSelectedGuest(guest);
-    setCheckoutModalOpen(true);
+  const handleAllocationSuccess = async () => {
+    // After room allocation is successful, mark as checked in
+    if (!selectedReservation) return;
+
+    try {
+      // Fetch the latest reservation data to get the room/bed assignments
+      const { data: latestReservation, error: fetchError } = await supabase
+        .from('reservations')
+        .select('*')
+        .eq('id', selectedReservation.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const members = [...(latestReservation.members || [])];
+      const checkinTime = new Date().toISOString();
+
+      // Update all members' checkin status while preserving room/bed assignments
+      const updatedMembers = members.map(member => ({
+        ...member,
+        checkin_status: 'completed',
+        checkin_time: checkinTime
+      }));
+
+      const { error } = await supabase
+        .from('reservations')
+        .update({ members: updatedMembers })
+        .eq('id', selectedReservation.id);
+
+      if (error) throw error;
+
+      showToast(`Group of ${members.length} members checked in successfully`, 'success');
+      fetchReservations(); // Refresh data
+      setAllocationModalOpen(false);
+      setSelectedReservation(null);
+    } catch (error) {
+      console.error('Error during check-in:', error);
+      showToast('Failed to complete check-in', 'error');
+    }
   };
 
-  const confirmCheckin = () => {
-    showToast(`${selectedGuest.name} checked in successfully`, 'success');
-    setCheckinModalOpen(false);
-    setSelectedGuest(null);
-  };
+  const handleUnassignRoom = async (guest) => {
+    try {
+      const members = guest.originalReservation.members || [];
+      const updatedMembers = members.map(member => ({
+        ...member,
+        checkin_status: 'pending',
+        checkin_time: null,
+        room: null,
+        bed: null
+      }));
 
-  const confirmCheckout = () => {
-    showToast(`${selectedGuest.name} checked out successfully`, 'success');
-    setCheckoutModalOpen(false);
-    setSelectedGuest(null);
-  };
+      const { error } = await supabase
+        .from('reservations')
+        .update({ members: updatedMembers })
+        .eq('id', guest.originalReservation.id);
 
-  const toggleSelect = (id) => {
-    setSelectedItems(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+      if (error) throw error;
+
+      showToast('Room assignment removed', 'success');
+      fetchReservations();
+    } catch (error) {
+      console.error('Error unassigning room:', error);
+      showToast('Failed to unassign room', 'error');
+    }
   };
 
   const handleBulkAction = () => {
-    showToast(`${selectedItems.length} guests processed`, 'success');
+    showToast(`${selectedItems.length} groups processed`, 'success');
     setSelectedItems([]);
   };
 
-  const GuestCard = ({ guest, onAction }) => (
-    <div className="bg-white border rounded-lg p-4">
-      <div className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          checked={selectedItems.includes(guest.id)}
-          onChange={() => toggleSelect(guest.id)}
-          className="w-4 h-4 mt-1 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-        />
-        <div className="flex-1">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-semibold text-gray-900">{guest.name}</h3>
-              <p className="text-sm text-gray-600">Room {guest.room}, Bed {guest.bed}</p>
-              {guest.reservationId && (
-                <p className="text-xs text-gray-500 mt-1">Reservation: {guest.reservationId}</p>
-              )}
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600 flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {guest.time}
-              </p>
-              {guest.status === 'completed' && (
-                <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
-                  <CheckCircle className="w-3 h-3" />
-                  Done
-                </span>
-              )}
-            </div>
-          </div>
-          {guest.status === 'pending' && (
-            <Button
-              variant="primary"
-              size="sm"
-              className="mt-3"
-              onClick={() => onAction(guest)}
-            >
-              {activeTab === 'checkin' ? 'Check In' : 'Check Out'}
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="space-y-4">
@@ -141,22 +195,13 @@ const CheckinsCheckouts = () => {
       />
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <Tabs value={activeTab} onChange={setActiveTab} className="flex-1">
-          <Tabs.Tab
-            value="checkin"
-            label="Check-in"
-            count={mockCheckins.filter(c => c.status === 'pending').length}
-            active={activeTab === 'checkin'}
-            onClick={setActiveTab}
-          />
-          <Tabs.Tab
-            value="checkout"
-            label="Check-out"
-            count={mockCheckouts.filter(c => c.status === 'pending').length}
-            active={activeTab === 'checkout'}
-            onClick={setActiveTab}
-          />
-        </Tabs>
+        <div className="flex-1">
+          <div className="bg-white rounded-lg border p-1">
+            <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded font-medium text-sm">
+              Check-in Schedule ({pendingCount} pending)
+            </div>
+          </div>
+        </div>
 
         <input
           type="date"
@@ -173,109 +218,136 @@ const CheckinsCheckouts = () => {
         onClear={() => setSearchQuery('')}
       />
 
-      {/* Content */}
-      <div className="space-y-3">
-        {filteredData.length === 0 ? (
-          <EmptyState
-            icon={<Users className="w-8 h-8" />}
-            title={`No ${activeTab === 'checkin' ? 'check-ins' : 'check-outs'} scheduled`}
-            description="There are no guests scheduled for today"
-          />
-        ) : (
-          filteredData.map(guest => (
-            <GuestCard
-              key={guest.id}
-              guest={guest}
-              onAction={activeTab === 'checkin' ? handleCheckin : handleCheckout}
+      {/* Content - Table View */}
+      <div className="bg-white rounded-lg border overflow-hidden">
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : filteredData.length === 0 ? (
+          <div className="py-12">
+            <EmptyState
+              icon={<Users className="w-8 h-8" />}
+              title="No check-ins scheduled"
+              description={`There are no guest arrivals scheduled for ${selectedDate}`}
             />
-          ))
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-4 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedItems(filteredData.map(g => g.id));
+                        } else {
+                          setSelectedItems([]);
+                        }
+                      }}
+                      checked={selectedItems.length === filteredData.length && filteredData.length > 0}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Reservation ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Primary Guest</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Members</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Room</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Time</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filteredData.map((guest) => (
+                  <tr key={guest.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(guest.id)}
+                        onChange={() => {
+                          setSelectedItems(prev =>
+                            prev.includes(guest.id) ? prev.filter(i => i !== guest.id) : [...prev, guest.id]
+                          );
+                        }}
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-medium text-gray-900">{guest.reservationId}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-900">{guest.name}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">
+                        <Users className="w-3 h-3" />
+                        {guest.memberCount}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-600">
+                        {guest.room}{guest.bed !== 'TBD' ? `, ${guest.bed}` : ''}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-600">{guest.time}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {guest.status === 'completed' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 text-xs rounded-full">
+                          <CheckCircle className="w-3 h-3" />
+                          Completed
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-50 text-yellow-700 text-xs rounded-full">
+                          <Clock className="w-3 h-3" />
+                          Pending
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        {guest.status === 'pending' && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handleCheckin(guest)}
+                          >
+                            Check In
+                          </Button>
+                        )}
+                        {guest.room !== 'TBD' && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleUnassignRoom(guest)}
+                          >
+                            Unassign Room
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* Check-in Modal */}
-      <Modal
-        isOpen={checkinModalOpen}
-        onClose={() => setCheckinModalOpen(false)}
-        title="Confirm Check-in"
-        size="sm"
-      >
-        <Modal.Content>
-          {selectedGuest && (
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-600">Guest Name</p>
-                <p className="font-semibold">{selectedGuest.name}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Room Assignment</p>
-                <p className="font-semibold">Room {selectedGuest.room}, Bed {selectedGuest.bed}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Reservation ID</p>
-                <p className="font-semibold">{selectedGuest.reservationId}</p>
-              </div>
-            </div>
-          )}
-        </Modal.Content>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setCheckinModalOpen(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={confirmCheckin}>
-            Confirm Check-in
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Check-out Modal with Damage Checklist */}
-      <Modal
-        isOpen={checkoutModalOpen}
-        onClose={() => setCheckoutModalOpen(false)}
-        title="Confirm Check-out"
-        size="md"
-      >
-        <Modal.Content>
-          {selectedGuest && (
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-600">Guest Name</p>
-                <p className="font-semibold">{selectedGuest.name}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Room</p>
-                <p className="font-semibold">Room {selectedGuest.room}, Bed {selectedGuest.bed}</p>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900 mb-2">Damage Checklist</p>
-                <div className="space-y-2">
-                  {['Bedding', 'Furniture', 'AC/Heater', 'Bathroom', 'Windows'].map(item => (
-                    <label key={item} className="flex items-center gap-2">
-                      <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" />
-                      <span className="text-sm">{item} - OK</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" defaultChecked />
-                <span className="text-sm">Keys collected</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" defaultChecked />
-                <span className="text-sm">Request cleaning</span>
-              </label>
-            </div>
-          )}
-        </Modal.Content>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setCheckoutModalOpen(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={confirmCheckout}>
-            Confirm Check-out
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      {/* Room Allocation Modal for Check-in */}
+      <RoomAllocationModal
+        isOpen={allocationModalOpen}
+        onClose={() => {
+          setAllocationModalOpen(false);
+          setSelectedReservation(null);
+        }}
+        reservation={selectedReservation}
+        onSuccess={handleAllocationSuccess}
+      />
     </div>
   );
 };

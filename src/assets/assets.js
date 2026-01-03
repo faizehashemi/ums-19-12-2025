@@ -102,8 +102,8 @@ export const exclusiveOffers = [
     { _id: 1, title: "Makkah -> Madina -> Makkah", description: "2 Umra package (Recommended) ", image: exclusiveOfferCardImg1 },
     { _id: 2, title: "Makkah -> Madina", description: "Single Umra", image: exclusiveOfferCardImg2 },
     { _id: 3, title: "Madina -> Makkah", description: "Single Umra",  image: exclusiveOfferCardImg3 },
-    { _id: 2, title: "Makkah Only", description: "Umrah only", image: exclusiveOfferCardImg2 },
-    { _id: 3, title: "Madina Only", description: "Ziyarat, Balagh & Faiz",  image: exclusiveOfferCardImg3 },
+    { _id: 4, title: "Makkah Only", description: "Umrah only", image: exclusiveOfferCardImg2 },
+    { _id: 5, title: "Madina Only", description: "Ziyarat, Balagh & Faiz",  image: exclusiveOfferCardImg3 },
 ]
 
 // Testimonials Dummy Data

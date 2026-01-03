@@ -280,7 +280,7 @@ export default function StepTravelDetails({
             Travel to Madina Date *
           </label>
           <input
-            type="datetime-local"
+            type="date"
             value={travelDetails.travelMadinaDate}
             onChange={setField("travelMadinaDate")}
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:outline-none"
@@ -293,7 +293,7 @@ export default function StepTravelDetails({
             Madina To Makkah Date *
           </label>
           <input
-            type="datetime-local"
+            type="date"
             value={travelDetails.makkahMadinaDate}
             onChange={setField("makkahMadinaDate")}
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:outline-none"

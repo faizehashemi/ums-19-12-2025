@@ -21,15 +21,7 @@ const Sidebar = () => {
         icon: assets.reservationIcon,
         children: [
           { key: "res-pending", title: "Pending", path: "/owner/reservations/pending" },
-          { key: "res-approved", title: "Approved", path: "/owner/reservations/approved" },
-          {
-            key: "res-create",
-            title: "Create Reservations",
-            children: [
-              { key: "res-create-tour", title: "Tour Operator", path: "/owner/reservations/create/tour-operator" },
-              { key: "res-create-ind", title: "Individuals", path: "/owner/reservations/create/individuals" }
-            ]
-          }
+          { key: "res-approved", title: "Approved", path: "/owner/reservations/approved" }
         ]
       },
 
@@ -100,7 +92,6 @@ const Sidebar = () => {
         children: [
           { key: "ac-housekeeping", title: "Housekeeping", path: "/owner/accommodation/housekeeping" },
           { key: "ac-maint", title: "Maintenance", path: "/owner/accommodation/maintenance" },
-          { key: "ac-alloc", title: "Allocation", path: "/owner/accommodation/allocation" },
           { key: "ac-check", title: "Check-ins & Check-outs", path: "/owner/accommodation/checkins-checkouts" },
           { key: "ac-grid", title: "Grid Layout", path: "/owner/accommodation/grid-layout" },
           { key: "ac-vacancy", title: "Vacancy Forecast", path: "/owner/accommodation/vacancy-forecast" }

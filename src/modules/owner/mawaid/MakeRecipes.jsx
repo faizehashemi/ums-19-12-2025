@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabaseClient";
-
+import { supabase } from "../../../lib/supabase";
+// CREATE TABLE mawaid_recipes (
+//   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+//   name TEXT NOT NULL,
+//   yield_type TEXT DEFAULT 'thal',
+//   yield_value NUMERIC,
+//   yield_unit TEXT,
+//   thal_equivalent_people INT DEFAULT 8,
+//   steps_text TEXT,
+//   version INT DEFAULT 1,
+//   is_active BOOLEAN DEFAULT true,
+//   created_at TIMESTAMPTZ DEFAULT now()
+// );
 const UNIT_CONVERSIONS = {
   "g-kg": 1000,
   "kg-g": 0.001,

@@ -41,7 +41,7 @@ CREATE INDEX idx_hr_training_enrollments_session_id ON hr_training_enrollments(s
 */
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabase';
 
 const Training = () => {
   const [view, setView] = useState('courses'); // 'courses' | 'sessions' | 'compliance'

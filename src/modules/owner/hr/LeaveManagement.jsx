@@ -33,7 +33,7 @@ CREATE INDEX idx_hr_leave_requests_dates ON hr_leave_requests(start_date, end_da
 */
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabase';
 
 const LeaveManagement = () => {
   const [leaves, setLeaves] = useState([]);
